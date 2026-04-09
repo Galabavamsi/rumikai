@@ -44,6 +44,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-contacts',
     'expo-notifications',
     'expo-router',
+    'expo-sqlite',
   ],
   scheme: 'widget-intelligence',
   extra: {
