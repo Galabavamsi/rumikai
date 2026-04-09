@@ -46,4 +46,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-router',
   ],
   scheme: 'widget-intelligence',
+  extra: {
+    eas: {
+      projectId: 'd9a88098-051d-4bf9-ad74-89e9d291e0fe',
+    },
+  },
 });
