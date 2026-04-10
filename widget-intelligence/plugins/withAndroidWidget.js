@@ -111,7 +111,7 @@ function withWidgetResources(config) {
       // Translucent cream background (75% opacity) with rounded corners
       fs.writeFileSync(path.join(drawableDir, 'widget_bg.xml'), `<?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#BFF5F0E8" />
+    <solid android:color="#FFF5F0E8" />
     <corners android:radius="24dp" />
 </shape>
 `);
@@ -119,7 +119,7 @@ function withWidgetResources(config) {
       // Dark button pill, slightly translucent (90% opacity)
       fs.writeFileSync(path.join(drawableDir, 'widget_pill_bg.xml'), `<?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#E61A1A1A" />
+    <solid android:color="#FF1A1A1A" />
     <corners android:radius="16dp" />
 </shape>
 `);

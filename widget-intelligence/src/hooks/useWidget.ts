@@ -98,6 +98,15 @@ export function useWidget() {
       };
 
       setWidgetData(data);
+      
+      // FIRE NATIVE BRIDGE CALLS
+      try {
+        const { writeWidgetData, refreshWidget } = require('../../modules/widget-bridge');
+        await writeWidgetData(data);
+        await refreshWidget();
+      } catch (e) {
+        console.warn('Bridge failed to write local updates:', e);
+      }
     } catch (error) {
       console.error('Widget refresh failed:', error);
     } finally {
@@ -106,8 +115,23 @@ export function useWidget() {
   }, [useMockData, permissions, setWidgetData, setLoading]);
 
   const updateWidget = useCallback(
-    (partial: Partial<WidgetData>) => updateWidgetData(partial),
-    [updateWidgetData],
+    async (partial: Partial<WidgetData>) => {
+      updateWidgetData(partial);
+      // Wait for the store update then push to native? 
+      // Actually since we don't have the full derived state here easily,
+      // it's better if we just wait for the store to update, or we pass 
+      // it combined if we had it. But useStore returns the current state.
+      const current = useStore.getState().widgetData;
+      if (current) {
+        const next = { ...current, ...partial };
+        try {
+          const { writeWidgetData, refreshWidget } = require('../../modules/widget-bridge');
+          await writeWidgetData(next);
+          await refreshWidget();
+        } catch (e) {}
+      }
+    },
+    [updateWidgetData]
   );
 
   return {

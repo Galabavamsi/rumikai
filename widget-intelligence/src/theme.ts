@@ -176,18 +176,16 @@ export const shadows = {
 
 export const commonStyles = {
   card: {
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.45)', // Translucent glass effect
     borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
   } as ViewStyle,
   cardElevated: {
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.55)', // Translucent glass effect, slightly higher opacity
     borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...shadows.cardElevated,
+    borderColor: 'rgba(245, 240, 232, 0.8)',
   } as ViewStyle,
   pillButton: {
     backgroundColor: colors.accentPillBg,

@@ -10,31 +10,30 @@
  */
 
 import { Platform } from 'react-native';
+import { requireNativeModule } from 'expo-modules-core';
 import { WidgetData } from '../../src/types/WidgetData';
 
 // Storage key used by both platforms
 const WIDGET_DATA_KEY = 'widget_data_json';
 
-// In-memory cache for widget data (simulates native storage)
+// In-memory cache for widget data (simulates native storage for web/fallback)
 let widgetDataCache: string | null = null;
+
+let WidgetBridge: any = null;
+try {
+  WidgetBridge = requireNativeModule('WidgetBridge');
+} catch (e) {
+  console.warn('WidgetBridge native module not found');
+}
 
 /**
  * Write widget data to the native storage layer.
- *
- * Android: SharedPreferences → DataStore (read by Glance widget)
- * iOS: App Group UserDefaults (read by WidgetKit extension)
  */
 export async function writeWidgetData(data: WidgetData): Promise<void> {
   const jsonString = JSON.stringify(data);
 
-  if (Platform.OS === 'android') {
-    // In production, this would call the native Kotlin module:
-    // NativeModules.WidgetBridgeModule.writeWidgetData(jsonString)
-    widgetDataCache = jsonString;
-  } else if (Platform.OS === 'ios') {
-    // In production, this would call the native Swift module:
-    // NativeModules.WidgetBridgeModule.writeWidgetData(jsonString)
-    widgetDataCache = jsonString;
+  if ((Platform.OS === 'android' || Platform.OS === 'ios') && WidgetBridge) {
+    await WidgetBridge.writeWidgetData(jsonString);
   } else {
     // Web / fallback
     widgetDataCache = jsonString;
@@ -47,9 +46,12 @@ export async function writeWidgetData(data: WidgetData): Promise<void> {
 export async function readWidgetData(): Promise<WidgetData | null> {
   let jsonString: string | null = null;
 
-  if (Platform.OS === 'android' || Platform.OS === 'ios') {
-    // In production: NativeModules.WidgetBridgeModule.readWidgetData()
-    jsonString = widgetDataCache;
+  if ((Platform.OS === 'android' || Platform.OS === 'ios') && WidgetBridge) {
+    try {
+      jsonString = await WidgetBridge.readWidgetData();
+    } catch {
+      jsonString = null;
+    }
   } else {
     jsonString = widgetDataCache;
   }
@@ -65,20 +67,12 @@ export async function readWidgetData(): Promise<WidgetData | null> {
 
 /**
  * Trigger a widget refresh on the native side.
- *
- * Android: Sends broadcast to AppWidgetProvider → triggers onUpdate
- * iOS: Calls WidgetCenter.shared.reloadAllTimelines()
  */
 export async function refreshWidget(): Promise<void> {
-  if (Platform.OS === 'android') {
-    // In production:
-    // NativeModules.WidgetBridgeModule.refreshWidget()
-    // This sends an ACTION_APPWIDGET_UPDATE broadcast
-    console.log('[WidgetBridge] Triggering Android widget refresh');
-  } else if (Platform.OS === 'ios') {
-    // In production:
-    // NativeModules.WidgetBridgeModule.refreshWidget()
-    // This calls WidgetCenter.shared.reloadAllTimelines()
-    console.log('[WidgetBridge] Triggering iOS widget refresh');
+  if ((Platform.OS === 'android' || Platform.OS === 'ios') && WidgetBridge) {
+    console.log('[WidgetBridge] Triggering native widget refresh');
+    await WidgetBridge.refreshWidget();
   }
 }
+
+
