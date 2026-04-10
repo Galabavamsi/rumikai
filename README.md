@@ -1,235 +1,372 @@
-# ✧ Widget Intelligence
-### Google At a Glance × Siri Suggestions
+# Widget Intelligence
+### Google At a Glance x Siri Suggestions
 
 [![Expo SDK 54](https://img.shields.io/badge/Expo-SDK%2054-4630EB?logo=expo&logoColor=white)](https://expo.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Logic-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![Kotlin](https://img.shields.io/badge/Kotlin-Android%20Widget-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Swift](https://img.shields.io/badge/Swift-iOS%20Widget-F05138?logo=swift&logoColor=white)](https://developer.apple.com/swift/)
 
-A zero-backend, on-device intelligence engine and home-screen widget system that surfaces quiet, contextual awareness through cross-app signal analysis.
+Zero-backend, on-device intelligence engine + native home-screen widget system.
+
+The system reads local signals (calendar, contacts, health placeholders, app context), scores contextual suggestions on-device, serializes a shared `WidgetData` payload, and renders native widgets on Android (Jetpack Glance style via RemoteViews) and iOS (WidgetKit source).
 
 ---
 
-## 📸 App Showcase
+## Repository Layout
+This repository has two major areas:
 
-| Widget View | Onboarding & Permissions |
-|:---:|:---:|
-| ![Widget Look](./app_images/widget_look.jpeg) | ![Onboarding](./app_images/widget_app_onboard.jpeg) |
+- `plan/`: Design and planning documents.
+- `widget-intelligence/`: Actual implementation (Expo app + native widget bridge + Android/iOS widget source).
 
-| Dashboard & Suggestions | Settings & Fallbacks |
-|:---:|:---:|
-| ![Main Screen](./app_images/widget_app_screen.jpeg) | ![Settings](./app_images/widget_app_settings.jpeg) |
+Primary application code lives in:
 
----
-
-## 🎯 Deliverables Completed
-*Aligned with the core task evaluation scope:*
-- [x] High-level architectural diagram
-- [x] Low-level design (widget architecture, data pipeline, suggestion engine)
-- [x] Working Android + iOS widget implementations
-- [x] Native modules for cross-app intelligence
-- [x] React Native hooks (e.g., `useWidget`, `useContextualSuggestions`)
-- [x] Tests for native modules
-- [x] Documentation
+- `widget-intelligence/src/engine/`
+- `widget-intelligence/src/hooks/`
+- `widget-intelligence/src/types/`
+- `widget-intelligence/modules/widget-bridge/`
+- `widget-intelligence/android-widget/`
+- `widget-intelligence/ios-widget/`
 
 ---
 
-## 🤔 Assumptions & Reasoning
+## Scope and Constraints
 
-* **Why React Native (Expo) as Host?**: Provides a single-source-of-truth for the complex intelligence engine and scoring logic (TypeScript), while bridging gracefully to Native Jetpack Glance and WidgetKit for premium widget rendering.
-* **Why Rule-Based On-Device Engine vs ML?**: For v1, a rule-based engine guarantees **100% data privacy** ("Zero-Backend"). Processing Health, Contacts, and Calendar data locally requires no network, consumes little battery, and avoids the massive GDPR/privacy friction of a cloud-based ML model.
-* **Why "Warm Minimalism"?**: High context shouldn't mean high stress. We trade alarming "red notification dots" for calm, human-readable suggestions like *"maybe check in with alex?"*
+### What this project is
+- A host app + intelligence layer + native widgets.
+- Local-only inference (rule engine), no required backend.
+
+### What is deliverable today
+- Android implementation can be compiled, installed, and tested.
+- iOS WidgetKit code is present for review.
+
+### Environment constraints
+- On Windows without Apple Developer provisioning, iOS App Group/WidgetKit signing is not practically shippable.
+- Android is the primary runtime target for APK validation.
 
 ---
 
-## 🏗 System Architecture
-
-The project consists of a React Native host app orchestrating the intelligence engine. It bridges finalized JSON state to native widget extensions via Shared Preferences / User Defaults.
+## Architecture
 
 ```mermaid
 graph TD
-    subgraph "OS Layer (User Data)"
-        Cal["📅 Calendar"]
-        Hea["🚶 Health (Steps/Sleep)"]
-        Con["👤 Contacts"]
-        App["📱 App Usage"]
+    subgraph "OS / Context Sources"
+        CAL[Calendar]
+        CON[Contacts]
+        HEA[Health placeholder]
+        MSG[Unread count]
+        APP[App usage placeholder]
     end
 
-    subgraph "Intelligence Engine (TypeScript)"
-        SC["Signal Collector (Cache/TTL)"]
-        RE["Rule Engine (Heuristics)"]
-        SQ["Suggestion Queue (Dedup)"]
+    subgraph "React Native Intelligence Layer"
+        SC[Signal Collector]
+        RE[Rule Engine]
+        SQ[Suggestion Queue]
+        HOOK[useWidget hook]
     end
 
-    subgraph "Bridge Layer (Expo Modules)"
-        EB["JS-to-Native Bridge"]
-        SP["SharedPreferences (Android)"]
-        UD["UserDefaults (iOS App Group)"]
+    subgraph "Bridge Layer"
+        JSB[bridge.ts]
+        NATIVE[WidgetBridge native module]
+        STORE[SharedPreferences or UserDefaults]
     end
 
-    subgraph "Presentation Layer (Native UI)"
-        Android["Android Widget (Glance)"]
-        iOS["iOS Widget (WidgetKit)"]
+    subgraph "Widget UI Layer"
+        ANDR[Android widget receiver + layouts]
+        IOS[iOS WidgetKit timeline source]
     end
 
-    %% Data Flow
-    Cal & Hea & Con & App --> SC
-    SC -->|Raw Signals| RE
-    RE -->|Candidates| SQ
-    SQ -->|WidgetData JSON| EB
-    EB --> SP & UD
-    SP --> Android
-    UD --> iOS
+    CAL --> SC
+    CON --> SC
+    HEA --> SC
+    APP --> SC
+    MSG --> RE
+
+    SC --> RE
+    RE --> SQ
+    SQ --> HOOK
+    HOOK --> JSB
+    JSB --> NATIVE
+    NATIVE --> STORE
+    STORE --> ANDR
+    STORE --> IOS
 ```
 
 ---
 
-## 🔄 End-to-End Flow & Implementation
+## Data Pipeline (Detailed)
+This section is the complete implementation pipeline from signal capture to widget render.
 
-How data moves from OS to Widget:
-1. **App Open/Background Job**: The host React Native app wakes up.
-2. **Collect**: The `SignalCollector` attempts to read native APIs (Calendar, Health, etc).
-3. **Score**: The `RuleEngine` evaluates each signal against the Rulebook, assigning a `0.0 - 1.0` confidence score.
-4. **Filter**: The `SuggestionQueue` culls anything below `0.45`, applies a 4-hour cooldown lock to prevent spam, and caps at the top 3 items.
-5. **Bridge**: The JSON payload is serialized and sent to the Native Module bridge.
-6. **Render**: The App Group data updates, pinging iOS `WidgetCenter.shared.reloadAllTimelines()` and Android `AppWidgetManager` to repaint the widgets with fresh data.
+### Pipeline stages
 
----
+| Stage | Input | Processing | Output | Primary files |
+|---|---|---|---|---|
+| 1. Trigger | App launch, pull-to-refresh, toggles, periodic refresh | `refresh()` starts orchestration | refresh cycle started | `widget-intelligence/src/hooks/useWidget.ts` |
+| 2. Signal collection | Permission set + mock mode flag | Collect from mock generator or OS adapters, apply TTL cache checks | `Signal[]` | `widget-intelligence/src/engine/signalCollector.ts`, `widget-intelligence/src/engine/mockDataGenerator.ts`, `widget-intelligence/src/types/Signal.ts` |
+| 3. Rule scoring | `Signal[]` + unread count | Apply deterministic rules, assign relevance score | Candidate `Suggestion[]` | `widget-intelligence/src/engine/ruleEngine.ts` |
+| 4. Queueing and dedup | Candidate suggestions | Expiry filter, cooldown filter, threshold filter, sort, cap | Final `Suggestion[]` | `widget-intelligence/src/engine/suggestionQueue.ts` |
+| 5. Payload assembly | Final suggestions + context signals | Build normalized widget snapshot | `WidgetData` object | `widget-intelligence/src/hooks/useWidget.ts`, `widget-intelligence/src/types/WidgetData.ts` |
+| 6. Bridge write | `WidgetData` | JSON serialize and write to native storage | persisted JSON payload | `widget-intelligence/modules/widget-bridge/bridge.ts`, `widget-intelligence/modules/widget-bridge/android/WidgetBridgeModule.kt` |
+| 7. Native refresh | Broadcast/update call | Widget receiver reloads payload and re-renders by size | Updated widget UI | `widget-intelligence/android-widget/WidgetReceiver.kt`, `widget-intelligence/android-widget/SmallWidget.kt`, `widget-intelligence/android-widget/MediumWidget.kt`, `widget-intelligence/android-widget/LargeWidget.kt` |
+| 8. Background cycle | WorkManager periodic task | Trigger refresh every ~15 minutes (best effort) | recurring refresh | `widget-intelligence/android-widget/PeriodicRefreshWorker.kt` |
 
-## 🔀 Logic for Real Implementation and iOS
-
-While the project utilizes a mock-data setup for rapid iteration, transitioning to production Native OS signals uses the following logic:
-
-### Android Real Implementation
-* **Calendar**: Fetch via Android `CalendarContract` provider.
-* **Health**: Integrating `Health Connect` API for Step counts and Sleep Sessions.
-* **Widget Refresh**: Utilize `WorkManager` for a bounded ~15-minute background refresh task that wakes the JS engine, processes rules, and repaints `Glance`.
-
-### iOS Real Implementation (WidgetKit)
-* **Calendar / Health**: Utilize Apple's `EventKit` and `HealthKit` respectively.
-* **Widget Refresh (TimelineProvider)**: iOS limits background app execution strictly.
-  * Apple does not allow constant polling. Instead, we generate a **Timeline** of predicted widget states.
-  * The React Native host updates `UserDefaults` (App Groups) whenever the main app is opened, or when triggered by a Silent Push Notification / Background Fetch.
-  * The iOS Swift widget extension reads this shared `UserDefaults` to render the SwiftUI widget immediately when seen.
-
----
-
-## 🛡️ Fallback & Permission UX
-
-If an intelligent system relies on ubiquitous access, it must handle denial gracefully.
+### End-to-end sequence
 
 ```mermaid
-flowchart LR
-    Start([Request Permission]) --> Gate{Granted?}
-    Gate -- Yes --> Collect[Ingest Signal]
-    Gate -- No --> Disable[Disable Rule Category]
-    Disable --> ReWeight[Re-weight Engine Thresholds]
-    ReWeight --> Proceed[Continue with Available Data]
+sequenceDiagram
+    participant UI as Host App UI
+    participant Hook as useWidget.refresh
+    participant SC as signalCollector
+    participant RE as ruleEngine
+    participant SQ as suggestionQueue
+    participant BR as bridge.ts
+    participant NM as Native Module
+    participant WR as WidgetReceiver
+
+    UI->>Hook: refresh()
+    Hook->>SC: collectSignals(useMockData, grantedPermissions)
+    SC-->>Hook: Signal[]
+    Hook->>RE: scoreSignals(signals, unreadCount)
+    RE-->>Hook: candidate suggestions
+    Hook->>SQ: processSuggestions(candidates)
+    SQ-->>Hook: final suggestions
+    Hook->>Hook: assemble WidgetData
+    Hook->>BR: writeWidgetData(widgetData)
+    BR->>NM: writeWidgetData(json)
+    Hook->>BR: refreshWidget()
+    BR->>NM: refreshWidget()
+    NM->>WR: APPWIDGET_UPDATE
+    WR->>WR: read JSON and render layout
 ```
 
-* **Progressive Onboarding**: Rather than requesting 5 scary permissions at startup, we ask contextually. We explain *why* before triggering the OS-level prompt.
-* **Graceful Degradation**: If Calendar is denied, the engine does not flatline. It simply prunes Calendar rules from the tree and lowers the total threshold to rely on Health/Contacts.
-* **Recovery**: Permanently denied permissions render a explicitly "Locked" state in the Settings page, allowing the user to tap and deep-link directly into OS Settings (`Linking.openSettings()`).
+### Signal freshness and TTL behavior
+Defined in `SIGNAL_TTL`.
+
+- `calendar_event`: 5 min
+- `step_count`: 30 min
+- `sleep_duration`: 30 min
+- `top_contact`: 60 min
+- `app_usage`: 15 min
+- `now_playing`: 5 min
+
+### Suggestion filtering behavior
+
+- Relevance threshold: `>= 0.45`
+- Max surfaced suggestions: `3`
+- Cooldown per suggestion ID: `4 hours`
+- Expired suggestions are removed before ranking
 
 ---
 
-## 📡 Endpoints (Zero-Backend)
+## WidgetData Contract
+Shared payload contract used by both platform widget layers.
 
-For version 1.0, the app dictates **Zero-Backend Endpoint Requirements**—all user data stays strictly on device for absolute privacy.
+Primary type definition:
 
-However, if extending to Cloud ML inference (and locally is insufficient), the system would require a single anonymized endpoint signature:
+- `widget-intelligence/src/types/WidgetData.ts`
 
-```http
-POST https://ml.yourdomain.com/v1/intelligence/score
-Content-Type: application/json
+Representative payload:
 
+```json
 {
-  "signals": [
-    { "type": "STALE_CONTACT", "lastContactDays": 8 }
-  ],
-  "timeOfDay": "14:30"
+  "updatedAt": 1760000000000,
+  "unreadCount": 7,
+  "messagePreview": {
+    "sender": "alex",
+    "snippet": "hey, are we still on for tonight?",
+    "deepLink": "widget://chat/123"
+  },
+  "nextEvent": {
+    "title": "team standup",
+    "startsInMinutes": 25,
+    "deepLink": "widget://meeting/evt_1"
+  },
+  "healthInsight": {
+    "type": "sleep",
+    "message": "5.5h of sleep last night"
+  },
+  "suggestions": [
+    {
+      "id": "suggestion-contacts-abc123",
+      "message": "maybe check in with alex?",
+      "relevanceScore": 0.6,
+      "source": "contacts",
+      "deepLinkAction": "widget://contact/alex",
+      "expiresAt": 1760014400000
+    }
+  ]
 }
 ```
-*Note: Due to privacy UX, remote evaluation should be avoided unless explicitly opted into.*
 
 ---
 
-## ⚖️ The Intelligence Rulebook
+## Rules Implemented
 
-| Signal | Logic | Score | Source |
-|:--- |:--- |:---:|:--- |
-| **Event Proximity** | Calendar event starting in < 60 min | **0.80** | 📅 Calendar |
-| **Event Upcoming** | Calendar event starting in 1-3 hours | **0.50** | 📅 Calendar |
-| **Sleep Alert** | Sleep duration < 6 hours last night | **0.70** | 😴 Health |
-| **Habit Gap** | Frequent contact not messaged in 7+ days | **0.60** | 👤 Contacts |
-| **Step Alert** | Steps < 3000 detected after 8:00 PM | **0.55** | 🚶 Health |
+From `widget-intelligence/src/engine/ruleEngine.ts`:
 
----
+- Event starts in `< 60 min` -> score `0.80`
+- Event starts in `1-3 hours` -> score `0.50`
+- Sleep `< 6h` -> score `0.70`
+- Sleep `< 7h` + poor quality -> score `0.55`
+- Top contact no interaction `>= 7 days` -> score `0.60`
+- Top contact no interaction `>= 3 days` -> score `0.50`
+- Steps `< 3000` after 8 PM -> score `0.55`
+- Steps `< 1000` after noon -> score `0.50`
+- Unread count `> 5` -> score `0.65`
 
-## 📱 Widget Matrix
-
-### Android (Jetpack Glance)
-| Size | Design Goal | Key Content |
-|:--- |:--- |:--- |
-| **Small (2x2)** | Quick Catch-up | Unread count + Direct Message action |
-| **Medium (4x2)** | Contextual Flow | Message sender/snippet + Reply/Open buttons |
-| **Large (4x4)** | Dashboard | Full context: Message + Next Event + Health + Suggestion |
-
-### iOS (WidgetKit SwiftUI)
-| Family | Content Breakdown |
-|:--- |:--- |
-| **Small** | Circle unread count + simple status greeting |
-| **Medium** | Split view: Messages (left) / Events & Suggestions (right) |
-| **Large** | Complete vertical stack of all active signals |
+Final ranking always sorts by score descending before capping.
 
 ---
 
-## 🎨 Design System: Warm Minimalism
+## Permission and Fallback Model
 
-The UI feels human and organic, using cream surfaces and quiet typography.
+- Permissions are tracked in persistent Zustand store.
+- Denied/unavailable sources are omitted, not fatal.
+- Engine continues with available signals only.
+- Health source currently degrades gracefully in real mode unless a native health module is wired.
+- Mock mode can be toggled for deterministic demo output.
 
-| Usage | Color | Sample | HSL / Hex |
-|:--- |:--- |:---:|:--- |
-| **Surface** | Cream | <img src="https://via.placeholder.com/60x20/F5F0E8/F5F0E8" alt="#F5F0E8" /> | `#F5F0E8` |
-| **Primary Text** | Graphite | <img src="https://via.placeholder.com/60x20/1A1A1A/1A1A1A" alt="#1A1A1A" /> | `#1A1A1A` |
-| **Secondary Text**| Muted Umber | <img src="https://via.placeholder.com/60x20/6B6560/6B6560" alt="#6B6560" /> | `#6B6560` |
-| **Success/Score** | Sage | <img src="https://via.placeholder.com/60x20/4A7C59/4A7C59" alt="#4A7C59" /> | `#4A7C59` |
+Primary files:
 
-### Copy Principles
-- **lowercase**: always lowercase, never shouting.
-- **warmth**: "maybe check in with alex?" instead of "Contact Alex Reminder".
+- `widget-intelligence/src/store.ts`
+- `widget-intelligence/src/hooks/usePermissions.ts`
+- `widget-intelligence/app/onboarding/permissions.tsx`
+- `widget-intelligence/app/settings.tsx`
 
 ---
 
-## 🚀 Deployment Steps
+## Build and Run
 
-### Local Development Build
+### Requirements
+
+- Node.js `>= 20.19.4` (recommended; lower versions produce engine warnings and tooling issues)
+- Android SDK installed
+- EAS CLI available globally (or via `npx eas`)
+
+### Install
+
 ```bash
-# 1. Install Dependencies
-npm install --legacy-peer-deps
+cd widget-intelligence
+npm install
+```
 
-# 2. Run Tests
-npm test
+### Project health checks
 
-# 3. Android Native Run (Requires Simulator/Device)
+```bash
+npx expo-doctor
+```
+
+### Local development
+
+```bash
+# start Metro
+npm start
+
+# if device cannot reach local 8081, use tunnel
+npx expo start --tunnel
+```
+
+```bash
+# run Android native build/install from local machine
 npm run android
+# or
+npx expo run:android
 ```
 
-### Production Build & Delivery
-**For Android (APK / AAB via Expo EAS)**
+### EAS cloud build
+
 ```bash
-# 1. Login to EAS
-eas login
+# development client APK/AAB
+npx eas build --platform android --profile development
 
-# 2. Trigger Cloud Build for Android
-npx eas-cli build --platform android --profile production
+# preview build (standalone-like testing)
+npx eas build --platform android --profile preview
+
+# production
+npx eas build --platform android --profile production
 ```
 
-**For iOS (TestFlight / App Store)**
+---
+
+## Testing
+
 ```bash
-# (Requires macOS & Apple Developer Account)
-npx eas-cli build --platform ios --profile production
-
-# OR locally (if on macOS)
-npx expo run:ios --configuration Release
+cd widget-intelligence
+npm test
 ```
+
+Engine-focused suites live in:
+
+- `widget-intelligence/__tests__/engine/ruleEngine.test.ts`
+- `widget-intelligence/__tests__/engine/signalCollector.test.ts`
+- `widget-intelligence/__tests__/engine/suggestionQueue.test.ts`
+
+---
+
+## Troubleshooting
+
+### 1) `java.net.ConnectException ... /<ip>:8081`
+Phone cannot reach Metro.
+
+Fix:
+
+```bash
+npx expo start --tunnel
+```
+
+### 2) `SDK location not found`
+Create or fix `android/local.properties`:
+
+```properties
+sdk.dir=D:/android_studio
+```
+
+### 3) `Return type mismatch: expected Any?, actual Unit` in `WidgetBridgeModule.kt`
+The fix must be applied in source module file (because prebuild copies it):
+
+- `widget-intelligence/modules/widget-bridge/android/WidgetBridgeModule.kt`
+
+Then rerun prebuild and rebuild:
+
+```bash
+npx expo prebuild --platform android --no-install
+npx eas build --platform android --profile development --clear-cache
+```
+
+### 4) `expo doctor` says local `eas-cli` should not be installed
+Remove local `eas-cli` from project dependencies and use global/npx:
+
+```bash
+npx eas --version
+```
+
+### 5) Widget appears but cannot be added
+Regenerate native files and reinstall app:
+
+```bash
+npx expo prebuild --platform android --clean
+npx expo run:android
+```
+
+---
+
+## iOS Note
+
+iOS widget source exists in:
+
+- `widget-intelligence/ios-widget/`
+- `widget-intelligence/modules/widget-bridge/ios/WidgetBridgeModule.swift`
+
+Building/signed distribution for iOS requires Apple Developer provisioning and a macOS signing workflow.
+
+---
+
+## Current Deliverables Checklist
+
+- [x] TypeScript rule engine with deterministic local scoring
+- [x] Suggestion queue with threshold, sorting, cooldown, expiry
+- [x] Shared WidgetData contract and native bridge writes
+- [x] Android widget receiver + small/medium/large widget rendering paths
+- [x] Permission onboarding + settings + mock mode
+- [x] Unit tests for core engine modules
+- [x] EAS Android build pipeline
+- [x] iOS widget source for review
