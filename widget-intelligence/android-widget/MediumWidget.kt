@@ -32,7 +32,7 @@ object MediumWidget {
         // Unread count
         safeSetText(context, views, "widget_unread_count", data.unreadCount.toString())
         safeSetText(context, views, "widget_unread_label",
-            if (data.unreadCount == 1) "unread message" else "unread messages")
+            if (data.unreadCount == 1) "Unread message" else "Unread messages")
         safeSetText(context, views, "widget_timestamp", formatTimeAgo(data.updatedAt))
 
         // Message preview
@@ -84,7 +84,7 @@ object MediumWidget {
         val diffMs = System.currentTimeMillis() - timestamp
         val minutes = diffMs / 60000
         return when {
-            minutes < 1 -> "just now"
+            minutes < 1 -> "Just now"
             minutes < 60 -> "${minutes}m ago"
             else -> "${minutes / 60}h ago"
         }

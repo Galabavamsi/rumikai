@@ -14,6 +14,7 @@ import {
   Inter_500Medium,
   Inter_600SemiBold,
 } from '@expo-google-fonts/inter';
+import { Outfit_400Regular, Outfit_600SemiBold } from '@expo-google-fonts/outfit';
 import { colors } from '../src/theme';
 
 const queryClient = new QueryClient();
@@ -24,6 +25,8 @@ export default function RootLayout() {
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
+    Outfit_400Regular,
+    Outfit_600SemiBold,
   });
 
   // Show a branded loading screen while fonts load

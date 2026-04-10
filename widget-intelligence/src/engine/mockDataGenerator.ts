@@ -29,15 +29,15 @@ export function generateMockSignals(): Signal[] {
     // Two upcoming calendar events
     createSignal('calendar_event', {
       id: 'mock-event-1',
-      title: 'team standup',
+      title: 'Team Standup',
       startsAt: now + 25 * 60 * 1000,   // 25 minutes from now
       endsAt: now + 55 * 60 * 1000,     // 55 minutes from now
-      location: 'zoom meeting room',
+      location: 'Zoom Meeting Room',
     } as CalendarEventSignal),
 
     createSignal('calendar_event', {
       id: 'mock-event-2',
-      title: 'design review with alex',
+      title: 'Design Review with Alex',
       startsAt: now + 3 * 60 * 60 * 1000,  // 3 hours from now
       endsAt: now + 4 * 60 * 60 * 1000,    // 4 hours from now
     } as CalendarEventSignal),
@@ -57,41 +57,41 @@ export function generateMockSignals(): Signal[] {
     // Frequent contacts — one not contacted recently
     createSignal('top_contact', {
       id: 'contact-1',
-      name: 'alex',
+      name: 'Alex',
       daysSinceContact: 8,
       interactionCount: 47,
     } as TopContactSignal),
 
     createSignal('top_contact', {
       id: 'contact-2',
-      name: 'jordan',
+      name: 'Jordan',
       daysSinceContact: 1,
       interactionCount: 23,
     } as TopContactSignal),
 
     createSignal('top_contact', {
       id: 'contact-3',
-      name: 'sam',
+      name: 'Sam',
       daysSinceContact: 4,
       interactionCount: 35,
     } as TopContactSignal),
 
     // App usage — social media heavy
     createSignal('app_usage', {
-      category: 'social media',
+      category: 'Social Media',
       dailyMinutes: 142,
     } as AppUsageSignal),
 
     createSignal('app_usage', {
-      category: 'productivity',
+      category: 'Productivity',
       dailyMinutes: 67,
     } as AppUsageSignal),
 
     // Currently playing music
     createSignal('now_playing', {
-      trackName: 'weightless',
-      artistName: 'marconi union',
-      genre: 'ambient',
+      trackName: 'Weightless',
+      artistName: 'Marconi Union',
+      genre: 'Ambient',
     } as NowPlayingSignal),
   ];
 }
@@ -103,8 +103,8 @@ export function generateMockMessages() {
   return {
     unreadCount: 7,
     messagePreview: {
-      sender: 'alex',
-      snippet: 'hey, are we still on for the design review later today? i had some thoughts about the navigation flow',
+      sender: 'Alex',
+      snippet: 'Hey, are we still on for the design review later today? I had some thoughts about the navigation flow.',
       deepLink: 'widget://chat/mock-thread-1',
     },
   };

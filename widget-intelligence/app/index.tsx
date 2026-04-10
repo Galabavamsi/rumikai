@@ -80,16 +80,16 @@ export default function HomeScreen() {
       >
         {/* ─── Header ──────────────────────────────────────────────── */}
         <View style={styles.header}>
-          <Text style={styles.appName}>widget intelligence</Text>
-          <Text style={styles.subtitle}>quiet, contextual awareness</Text>
+          <Text style={styles.appName}>Widget Intelligence</Text>
+          <Text style={styles.subtitle}>Quiet, contextual awareness</Text>
         </View>
 
         {/* ─── Developer Mode Toggle ────────────────────────────────── */}
         <View style={styles.devToggle}>
           <View style={styles.devToggleText}>
-            <Text style={styles.devToggleLabel}>developer mode</Text>
+            <Text style={styles.devToggleLabel}>Developer Mode</Text>
             <Text style={styles.devToggleHint}>
-              {useMockData ? 'using mock signals' : 'using real device data'}
+              {useMockData ? 'Using mock signals' : 'Using real device data'}
             </Text>
           </View>
           <Switch
@@ -108,7 +108,7 @@ export default function HomeScreen() {
         {widgetData && (
           <View style={styles.widgetCard}>
             <View style={styles.widgetHeader}>
-              <Text style={styles.widgetTitle}>widget preview</Text>
+              <Text style={styles.widgetTitle}>WIDGET PREVIEW</Text>
               <Text style={styles.timestamp}>
                 {formatTimeAgo(widgetData.updatedAt)}
               </Text>
@@ -119,7 +119,7 @@ export default function HomeScreen() {
               <View style={styles.unreadBadge}>
                 <Text style={styles.unreadCount}>{widgetData.unreadCount}</Text>
               </View>
-              <Text style={styles.unreadLabel}>unread messages</Text>
+              <Text style={styles.unreadLabel}>Unread messages</Text>
             </View>
 
             {/* Message Preview */}
@@ -133,10 +133,10 @@ export default function HomeScreen() {
                 </Text>
                 <View style={styles.actionRow}>
                   <TouchableOpacity style={styles.actionPill}>
-                    <Text style={styles.actionPillText}>reply</Text>
+                    <Text style={styles.actionPillText}>Reply</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.actionPillOutline}>
-                    <Text style={styles.actionPillOutlineText}>open</Text>
+                    <Text style={styles.actionPillOutlineText}>Open</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -183,7 +183,7 @@ export default function HomeScreen() {
         {/* ─── Suggestion Cards ─────────────────────────────────────── */}
         {suggestions.length > 0 && (
           <View style={styles.suggestionsSection}>
-            <Text style={styles.sectionTitle}>suggestions</Text>
+            <Text style={styles.sectionTitle}>SUGGESTIONS</Text>
             {suggestions.map((suggestion) => (
               <View key={suggestion.id} style={styles.suggestionCard}>
                 <View style={styles.suggestionContent}>
@@ -202,7 +202,7 @@ export default function HomeScreen() {
                     />
                   </View>
                   <Text style={styles.scoreLabel}>
-                    relevance {(suggestion.relevanceScore * 100).toFixed(0)}%
+                    Relevance {(suggestion.relevanceScore * 100).toFixed(0)}%
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -225,7 +225,7 @@ export default function HomeScreen() {
             activeOpacity={0.7}
           >
             <MessageIcon size={20} color={colors.textPrimary} />
-            <Text style={styles.navButtonText}>permission{'\n'}onboarding</Text>
+            <Text style={styles.navButtonText}>Permission{'\n'}Onboarding</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -234,20 +234,20 @@ export default function HomeScreen() {
             activeOpacity={0.7}
           >
             <SettingsIcon size={20} color={colors.textPrimary} />
-            <Text style={styles.navButtonText}>settings</Text>
+            <Text style={styles.navButtonText}>Settings</Text>
           </TouchableOpacity>
         </View>
 
         {/* ─── Architecture Info ────────────────────────────────────── */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>architecture</Text>
+          <Text style={styles.infoTitle}>ARCHITECTURE</Text>
           <Text style={styles.infoText}>
-            signal collector → rule engine → suggestion queue → widget data
+            Signal Collector → Rule Engine → Suggestion Queue → Widget Data
           </Text>
           <Text style={styles.infoText}>
             {widgetData?.suggestions.length ?? 0} active suggestions
             {' · '}
-            {useMockData ? 'mock signals' : 'real signals'}
+            {useMockData ? 'Mock signals' : 'Real signals'}
           </Text>
         </View>
 
@@ -279,6 +279,8 @@ const styles = StyleSheet.create({
   },
   appName: {
     ...typography.h2,
+    fontFamily: 'Outfit_600SemiBold',
+    letterSpacing: -0.5,
   },
   subtitle: {
     ...typography.bodySmall,

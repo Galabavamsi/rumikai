@@ -104,6 +104,26 @@ function withWidgetResources(config) {
 `;
       fs.writeFileSync(path.join(xmlDir, 'widget_provider_info.xml'), widgetProviderXml);
 
+      // ─── 1.5. Create drawables for translucent backgrounds ───────
+      const drawableDir = path.join(androidDir, 'res', 'drawable');
+      fs.mkdirSync(drawableDir, { recursive: true });
+
+      // Translucent cream background (75% opacity) with rounded corners
+      fs.writeFileSync(path.join(drawableDir, 'widget_bg.xml'), `<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#BFF5F0E8" />
+    <corners android:radius="24dp" />
+</shape>
+`);
+
+      // Dark button pill, slightly translucent (90% opacity)
+      fs.writeFileSync(path.join(drawableDir, 'widget_pill_bg.xml'), `<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#E61A1A1A" />
+    <corners android:radius="16dp" />
+</shape>
+`);
+
       // ─── 2. Create ALL layout XML files ─────────────────────────────
 
       const layoutDir = path.join(androidDir, 'res', 'layout');
@@ -116,21 +136,21 @@ function withWidgetResources(config) {
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="#FFF5F0E8"
+    android:background="@drawable/widget_bg"
     android:gravity="center">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="widget intelligence"
+        android:text="Widget Intelligence"
         android:textSize="14sp"
         android:textColor="#FF1A1A1A"
-        android:fontFamily="sans-serif-light" />
+        android:fontFamily="sans-serif-medium" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="loading..."
+        android:text="Loading..."
         android:textSize="12sp"
         android:textColor="#FF6B6560"
         android:layout_marginTop="4dp" />
@@ -145,7 +165,7 @@ function withWidgetResources(config) {
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="#FFF5F0E8"
+    android:background="@drawable/widget_bg"
     android:gravity="center_vertical">
 
     <LinearLayout
@@ -162,7 +182,7 @@ function withWidgetResources(config) {
             android:text="0"
             android:textSize="16sp"
             android:textColor="#FFF5F0E8"
-            android:background="@android:color/black"
+            android:background="@drawable/widget_pill_bg"
             android:fontFamily="sans-serif-medium" />
 
         <TextView
@@ -170,7 +190,7 @@ function withWidgetResources(config) {
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
-            android:text="unread messages"
+            android:text="Unread messages"
             android:textSize="14sp"
             android:textColor="#FF1A1A1A"
             android:fontFamily="sans-serif" />
@@ -182,10 +202,10 @@ function withWidgetResources(config) {
         android:layout_height="36dp"
         android:layout_marginTop="12dp"
         android:gravity="center"
-        android:text="open chat"
+        android:text="Open Chat"
         android:textSize="13sp"
         android:textColor="#FFF5F0E8"
-        android:background="@android:color/black"
+        android:background="@drawable/widget_pill_bg"
         android:fontFamily="sans-serif-medium"
         android:clickable="true" />
 
@@ -199,7 +219,7 @@ function withWidgetResources(config) {
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="#FFF5F0E8">
+    android:background="@drawable/widget_bg">
 
     <!-- Header row: unread count + timestamp -->
     <LinearLayout
@@ -216,7 +236,7 @@ function withWidgetResources(config) {
             android:text="0"
             android:textSize="15sp"
             android:textColor="#FFF5F0E8"
-            android:background="@android:color/black"
+            android:background="@drawable/widget_pill_bg"
             android:fontFamily="sans-serif-medium" />
 
         <TextView
@@ -225,7 +245,7 @@ function withWidgetResources(config) {
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="10dp"
-            android:text="unread messages"
+            android:text="Unread messages"
             android:textSize="14sp"
             android:textColor="#FF1A1A1A" />
 
@@ -281,10 +301,10 @@ function withWidgetResources(config) {
             android:paddingStart="20dp"
             android:paddingEnd="20dp"
             android:gravity="center"
-            android:text="reply"
+            android:text="Reply"
             android:textSize="13sp"
             android:textColor="#FFF5F0E8"
-            android:background="@android:color/black"
+            android:background="@drawable/widget_pill_bg"
             android:fontFamily="sans-serif-medium"
             android:clickable="true" />
 
@@ -296,7 +316,7 @@ function withWidgetResources(config) {
             android:paddingStart="20dp"
             android:paddingEnd="20dp"
             android:gravity="center"
-            android:text="open"
+            android:text="Open"
             android:textSize="13sp"
             android:textColor="#FF1A1A1A"
             android:fontFamily="sans-serif-medium"
@@ -313,7 +333,7 @@ function withWidgetResources(config) {
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="#FFF5F0E8">
+    android:background="@drawable/widget_bg">
 
     <!-- Header: unread + timestamp -->
     <LinearLayout
@@ -330,7 +350,7 @@ function withWidgetResources(config) {
             android:text="0"
             android:textSize="15sp"
             android:textColor="#FFF5F0E8"
-            android:background="@android:color/black"
+            android:background="@drawable/widget_pill_bg"
             android:fontFamily="sans-serif-medium" />
 
         <TextView
@@ -339,7 +359,7 @@ function withWidgetResources(config) {
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="10dp"
-            android:text="unread messages"
+            android:text="Unread messages"
             android:textSize="14sp"
             android:textColor="#FF1A1A1A" />
 
@@ -392,10 +412,10 @@ function withWidgetResources(config) {
                 android:paddingStart="20dp"
                 android:paddingEnd="20dp"
                 android:gravity="center"
-                android:text="reply"
+                android:text="Reply"
                 android:textSize="13sp"
                 android:textColor="#FFF5F0E8"
-                android:background="@android:color/black"
+                android:background="@drawable/widget_pill_bg"
                 android:fontFamily="sans-serif-medium"
                 android:clickable="true" />
 
@@ -407,7 +427,7 @@ function withWidgetResources(config) {
                 android:paddingStart="20dp"
                 android:paddingEnd="20dp"
                 android:gravity="center"
-                android:text="open"
+                android:text="Open"
                 android:textSize="13sp"
                 android:textColor="#FF1A1A1A"
                 android:fontFamily="sans-serif-medium"

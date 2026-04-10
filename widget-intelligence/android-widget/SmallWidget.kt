@@ -50,7 +50,7 @@ object SmallWidget {
         if (labelId != 0) {
             views.setTextViewText(
                 labelId,
-                if (data.unreadCount == 1) "unread message" else "unread messages"
+                if (data.unreadCount == 1) "Unread message" else "Unread messages"
             )
         }
 
