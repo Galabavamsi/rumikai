@@ -37,9 +37,12 @@ export function useWidget() {
       // Collect signals
       const signals = await collectSignals(useMockData, granted);
 
-      // Get mock messages if in mock mode
+      // Get message data based on mode
       const mockMessages = useMockData ? generateMockMessages() : null;
-      const unreadCount = mockMessages?.unreadCount ?? 0;
+      const manualUnread = useStore.getState().manualUnreadCount;
+      const unreadCount = useMockData
+        ? (mockMessages?.unreadCount ?? 0)
+        : manualUnread;
 
       // Score signals into suggestions
       const rawSuggestions = scoreSignals(signals, unreadCount);
@@ -91,7 +94,7 @@ export function useWidget() {
       const data: WidgetData = {
         updatedAt: Date.now(),
         unreadCount,
-        messagePreview: mockMessages?.messagePreview,
+        messagePreview: useMockData ? mockMessages?.messagePreview : undefined,
         nextEvent,
         healthInsight,
         suggestions,

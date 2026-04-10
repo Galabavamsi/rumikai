@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Switch,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -90,6 +91,8 @@ export default function SettingsScreen() {
   const { permissions, request, openSettings, requiresSetup } = usePermissions();
   const useMockData = useStore((s) => s.useMockData);
   const toggleMockMode = useStore((s) => s.toggleMockMode);
+  const manualUnreadCount = useStore((s) => s.manualUnreadCount);
+  const setManualUnreadCount = useStore((s) => s.setManualUnreadCount);
   const [expandedKey, setExpandedKey] = useState<PermissionKey | null>(null);
 
   const getStatusStyle = (key: PermissionKey) => {
@@ -232,6 +235,41 @@ export default function SettingsScreen() {
               trackColor={{ false: colors.border, true: colors.granted }}
               thumbColor={colors.surfaceElevated}
               ios_backgroundColor={colors.border}
+            />
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Manual Unread Count — only shown when NOT in mock mode */}
+          <View style={styles.unreadCountRow}>
+            <View style={styles.toggleTextBlock}>
+              <Text style={styles.toggleLabel}>manual unread count</Text>
+              <Text style={styles.toggleHint}>
+                {useMockData
+                  ? 'disabled in mock mode (uses 7 auto)'
+                  : 'set unread count for real mode widget testing'
+                }
+              </Text>
+            </View>
+            <TextInput
+              style={[
+                styles.unreadInput,
+                useMockData && styles.unreadInputDisabled,
+              ]}
+              keyboardType="number-pad"
+              value={useMockData ? '7' : manualUnreadCount.toString()}
+              editable={!useMockData}
+              onChangeText={(text) => {
+                const num = parseInt(text, 10);
+                if (!isNaN(num)) {
+                  setManualUnreadCount(num);
+                } else if (text === '') {
+                  setManualUnreadCount(0);
+                }
+              }}
+              maxLength={3}
+              placeholder="0"
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
         </View>
@@ -422,5 +460,29 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     lineHeight: 22,
     padding: spacing.lg,
+  },
+
+  // Unread Count Input
+  unreadCountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.lg,
+  },
+  unreadInput: {
+    width: 56,
+    height: 40,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceElevated,
+    textAlign: 'center',
+    fontFamily: fonts.medium,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  unreadInputDisabled: {
+    opacity: 0.4,
+    backgroundColor: colors.surface,
   },
 });

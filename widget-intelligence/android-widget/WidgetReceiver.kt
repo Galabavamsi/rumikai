@@ -38,13 +38,12 @@ class WidgetReceiver : AppWidgetProvider() {
 
     override fun onEnabled(context: Context) {
         Log.d(TAG, "onEnabled — first widget placed, scheduling refresh")
-        // WorkManager requires androidx.work dependency, skip for now
-        // PeriodicRefreshWorker.schedule(context)
+        PeriodicRefreshWorker.schedule(context)
     }
 
     override fun onDisabled(context: Context) {
         Log.d(TAG, "onDisabled — last widget removed")
-        // PeriodicRefreshWorker.cancel(context)
+        PeriodicRefreshWorker.cancel(context)
     }
 
     override fun onReceive(context: Context, intent: Intent) {

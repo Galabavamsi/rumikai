@@ -607,11 +607,44 @@ function withWidgetResources(config) {
 }
 
 /**
+ * Add WorkManager dependency to app/build.gradle for periodic widget refresh
+ */
+function withWorkManagerDependency(config) {
+  return withDangerousMod(config, [
+    'android',
+    async (config) => {
+      const projectRoot = config.modRequest.projectRoot;
+      const buildGradlePath = path.join(projectRoot, 'android', 'app', 'build.gradle');
+
+      if (fs.existsSync(buildGradlePath)) {
+        let content = fs.readFileSync(buildGradlePath, 'utf8');
+
+        // Check if dependency is already present
+        if (!content.includes('work-runtime-ktx')) {
+          // Find the dependencies block and add work-runtime-ktx
+          content = content.replace(
+            /dependencies\s*\{/,
+            `dependencies {\n    implementation "androidx.work:work-runtime-ktx:2.9.1"`
+          );
+          fs.writeFileSync(buildGradlePath, content);
+          console.log('[withAndroidWidget] Added androidx.work:work-runtime-ktx dependency');
+        } else {
+          console.log('[withAndroidWidget] work-runtime-ktx dependency already present');
+        }
+      }
+
+      return config;
+    },
+  ]);
+}
+
+/**
  * Main plugin entrypoint
  */
 function withAndroidWidget(config) {
   config = withWidgetReceiver(config);
   config = withWidgetResources(config);
+  config = withWorkManagerDependency(config);
   return config;
 }
 

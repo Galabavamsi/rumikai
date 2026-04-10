@@ -189,7 +189,20 @@ function scoreTopContact(contact: TopContactSignal, now: number): Suggestion[] {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-let suggestionCounter = 0;
+/**
+ * Generate a deterministic hash for a string.
+ * Used to create stable suggestion IDs that survive across refresh cycles,
+ * so the cooldown map can correctly deduplicate repeat suggestions.
+ */
+function simpleHash(input: string): string {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    const char = input.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36);
+}
 
 function createSuggestion(
   message: string,
@@ -199,9 +212,10 @@ function createSuggestion(
   deepLinkAction?: string,
   expiryDurationMs: number = 4 * 60 * 60 * 1000, // default 4 hours
 ): Suggestion {
+  const truncatedMessage = message.substring(0, 60);
   return {
-    id: `suggestion-${source}-${++suggestionCounter}`,
-    message: message.substring(0, 60), // enforce 60 char max
+    id: `suggestion-${source}-${simpleHash(truncatedMessage)}`,
+    message: truncatedMessage, // enforce 60 char max
     relevanceScore,
     source,
     deepLinkAction,
@@ -211,7 +225,8 @@ function createSuggestion(
 
 /**
  * Reset the internal suggestion counter. Useful for testing.
+ * @deprecated — IDs are now deterministic, this is a no-op kept for test compatibility.
  */
 export function resetCounter(): void {
-  suggestionCounter = 0;
+  // No-op: IDs are now content-hashed, not counter-based.
 }

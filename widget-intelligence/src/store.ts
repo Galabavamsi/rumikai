@@ -42,6 +42,10 @@ interface WidgetStore {
   toggleMockMode: () => void;
   setMockMode: (enabled: boolean) => void;
 
+  // ─── Manual Unread Count (persisted) — for real mode testing ───────────
+  manualUnreadCount: number;
+  setManualUnreadCount: (count: number) => void;
+
   // ─── Permissions (persisted) ───────────────────────────────────────────
   permissions: Record<PermissionKey, PermissionStatus>;
   setPermission: (key: PermissionKey, status: PermissionStatus) => void;
@@ -77,6 +81,10 @@ export const useStore = create<WidgetStore>()(
       toggleMockMode: () => set((state) => ({ useMockData: !state.useMockData })),
       setMockMode: (enabled) => set({ useMockData: enabled }),
 
+      // Manual Unread Count — allows testing in real mode
+      manualUnreadCount: 0,
+      setManualUnreadCount: (count) => set({ manualUnreadCount: Math.max(0, Math.round(count)) }),
+
       // Permissions — all undetermined initially
       permissions: {
         calendar: 'undetermined',
@@ -105,6 +113,7 @@ export const useStore = create<WidgetStore>()(
       // Only persist these fields — widget data is transient
       partialize: (state) => ({
         useMockData: state.useMockData,
+        manualUnreadCount: state.manualUnreadCount,
         permissions: state.permissions,
         onboardingComplete: state.onboardingComplete,
       }),

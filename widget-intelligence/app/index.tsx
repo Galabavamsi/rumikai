@@ -42,6 +42,7 @@ export default function HomeScreen() {
   const useMockData = useStore((s) => s.useMockData);
   const toggleMockMode = useStore((s) => s.toggleMockMode);
   const onboardingComplete = useStore((s) => s.onboardingComplete);
+  const permissions = useStore((s) => s.permissions);
 
   // Initial data load
   useEffect(() => {
@@ -238,7 +239,36 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ─── Architecture Info ────────────────────────────────────── */}
+        {/* ─── Signal Status / Architecture Info ────────────────────── */}
+        {!useMockData && (
+          <View style={styles.signalStatusCard}>
+            <Text style={styles.infoTitle}>SIGNAL STATUS</Text>
+            <Text style={styles.signalStatusHint}>
+              real mode — showing available device signals
+            </Text>
+            <View style={styles.signalRow}>
+              <View style={[styles.signalDot, permissions.calendar === 'granted' ? styles.signalActive : styles.signalInactive]} />
+              <Text style={styles.signalLabel}>
+                calendar {permissions.calendar === 'granted' ? '· active' : '· not granted'}
+              </Text>
+            </View>
+            <View style={styles.signalRow}>
+              <View style={[styles.signalDot, permissions.contacts === 'granted' ? styles.signalActive : styles.signalInactive]} />
+              <Text style={styles.signalLabel}>
+                contacts {permissions.contacts === 'granted' ? '· active' : '· not granted'}
+              </Text>
+            </View>
+            <View style={styles.signalRow}>
+              <View style={[styles.signalDot, styles.signalUnavailable]} />
+              <Text style={styles.signalLabel}>health · not available (needs native module)</Text>
+            </View>
+            <View style={styles.signalRow}>
+              <View style={[styles.signalDot, styles.signalUnavailable]} />
+              <Text style={styles.signalLabel}>messages · manual count via settings</Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>ARCHITECTURE</Text>
           <Text style={styles.infoText}>
@@ -538,5 +568,41 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     fontSize: 13,
     lineHeight: 20,
+  },
+
+  // Signal Status (Real Mode)
+  signalStatusCard: {
+    ...commonStyles.card,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  signalStatusHint: {
+    ...typography.caption,
+    fontStyle: 'italic',
+    marginBottom: spacing.md,
+  },
+  signalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  signalDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: spacing.sm,
+  },
+  signalActive: {
+    backgroundColor: colors.granted,
+  },
+  signalInactive: {
+    backgroundColor: colors.denied,
+  },
+  signalUnavailable: {
+    backgroundColor: colors.textTertiary,
+  },
+  signalLabel: {
+    ...typography.bodySmall,
+    fontSize: 13,
   },
 });
