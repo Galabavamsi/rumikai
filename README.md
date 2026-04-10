@@ -10,6 +10,16 @@ Zero-backend, on-device intelligence engine + native home-screen widget system.
 
 The system reads local signals (calendar, contacts, health placeholders, app context), scores contextual suggestions on-device, serializes a shared `WidgetData` payload, and renders native widgets on Android (Jetpack Glance style via RemoteViews) and iOS (WidgetKit source).
 
+## App Screenshots
+
+| Home Preview | Suggestions View |
+|---|---|
+| ![Widget Intelligence home preview](app_images/widget_app_screen.jpeg) | ![Widget Intelligence suggestions view](app_images/widget_app_onboard.jpeg) |
+
+| Settings View | Android Widget |
+|---|---|
+| ![Widget Intelligence settings view](app_images/widget_app_settings.jpeg) | ![Widget Intelligence Android widget](app_images/widget_look.jpeg) |
+
 ---
 
 ## Repository Layout
