@@ -22,7 +22,7 @@ class WidgetBridgeModule : Module() {
 
         // Write widget data JSON to SharedPreferences
         AsyncFunction("writeWidgetData") { jsonString: String ->
-            val context = appContext.reactContext ?: return@AsyncFunction
+            val context = appContext.reactContext ?: return@AsyncFunction null
             val prefs = context.getSharedPreferences("widget_data", Context.MODE_PRIVATE)
             prefs.edit().putString("widget_data_json", jsonString).apply()
         }
@@ -36,7 +36,7 @@ class WidgetBridgeModule : Module() {
 
         // Trigger widget refresh — sends broadcast to AppWidgetProvider
         AsyncFunction("refreshWidget") {
-            val context = appContext.reactContext ?: return@AsyncFunction
+            val context = appContext.reactContext ?: return@AsyncFunction null
             val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
             intent.setPackage(context.packageName)
 
