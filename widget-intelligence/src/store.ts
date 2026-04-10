@@ -1,5 +1,5 @@
 /**
- * store.ts — Global state management using Zustand + MMKV persistence.
+ * store.ts — Global state management using Zustand + AsyncStorage persistence.
  *
  * Manages:
  *   - Widget data state (transient — not persisted)
@@ -8,30 +8,14 @@
  *   - Onboarding state (persisted)
  *   - Loading/error flags (transient)
  *
- * Persistence: MMKV is synchronous, so the store hydrates instantly on startup.
+ * Persistence: AsyncStorage is async, so we use Zustand's built-in persist middleware
+ * which handles the hydration lifecycle automatically.
  */
 
 import { create } from 'zustand';
-import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
-import { createMMKV, type MMKV } from 'react-native-mmkv';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WidgetData } from './types/WidgetData';
-
-// ─── MMKV Instance ──────────────────────────────────────────────────────────
-
-const storage: MMKV = createMMKV({ id: 'widget-intelligence-store' });
-
-const mmkvStorage: StateStorage = {
-  getItem: (name: string) => {
-    const value = storage.getString(name);
-    return value ?? null;
-  },
-  setItem: (name: string, value: string) => {
-    storage.set(name, value);
-  },
-  removeItem: (name: string) => {
-    storage.remove(name);
-  },
-};
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -65,6 +49,10 @@ interface WidgetStore {
   // ─── Onboarding (persisted) ────────────────────────────────────────────
   onboardingComplete: boolean;
   setOnboardingComplete: (complete: boolean) => void;
+
+  // ─── Hydration ─────────────────────────────────────────────────────────
+  _hasHydrated: boolean;
+  setHasHydrated: (hydrated: boolean) => void;
 }
 
 // ─── Store ──────────────────────────────────────────────────────────────────
@@ -106,16 +94,23 @@ export const useStore = create<WidgetStore>()(
       // Onboarding
       onboardingComplete: false,
       setOnboardingComplete: (complete) => set({ onboardingComplete: complete }),
+
+      // Hydration tracking
+      _hasHydrated: false,
+      setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
     }),
     {
       name: 'widget-intelligence-storage',
-      storage: createJSONStorage(() => mmkvStorage),
+      storage: createJSONStorage(() => AsyncStorage),
       // Only persist these fields — widget data is transient
       partialize: (state) => ({
         useMockData: state.useMockData,
         permissions: state.permissions,
         onboardingComplete: state.onboardingComplete,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     },
   ),
 );
