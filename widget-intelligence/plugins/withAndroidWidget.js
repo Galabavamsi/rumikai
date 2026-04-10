@@ -588,18 +588,7 @@ function withWidgetResources(config) {
       }
 
       // ─── 5. Copy bridge module source files ─────────────────────────
-
-      const bridgeSourceDir = path.join(projectRoot, 'modules', 'widget-bridge', 'android');
-      const targetBridgeDir = path.join(androidDir, 'java', packagePath, 'bridge');
-      fs.mkdirSync(targetBridgeDir, { recursive: true });
-
-      const bridgeFile = 'WidgetBridgeModule.kt';
-      const bridgeSource = path.join(bridgeSourceDir, bridgeFile);
-      const bridgeTarget = path.join(targetBridgeDir, bridgeFile);
-      if (fs.existsSync(bridgeSource)) {
-        fs.copyFileSync(bridgeSource, bridgeTarget);
-        console.log(`[withAndroidWidget] Copied ${bridgeFile}`);
-      }
+      // Removed: WidgetBridge is now handled dynamically by Expo local modules auto-linking.
 
       return config;
     },

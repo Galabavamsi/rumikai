@@ -408,6 +408,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     height: 38,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   actionPillText: {
     color: colors.accentPillText,
@@ -418,10 +419,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.xl,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.lg,
     paddingVertical: 10,
     height: 38,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   actionPillOutlineText: {
     color: colors.textPrimary,

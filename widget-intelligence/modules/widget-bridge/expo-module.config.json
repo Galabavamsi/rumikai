@@ -1,0 +1,7 @@
+{
+  "name": "WidgetBridge",
+  "platforms": ["android"],
+  "android": {
+    "modules": ["com.widget.intelligence.bridge.WidgetBridgeModule"]
+  }
+}
