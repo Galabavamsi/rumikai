@@ -1,81 +1,41 @@
 package com.widget.intelligence.widget
 
 import android.content.Context
-import androidx.work.*
-import java.util.concurrent.TimeUnit
+import android.util.Log
 
 /**
- * PeriodicRefreshWorker — WorkManager job that refreshes widget data every ~15 minutes.
+ * PeriodicRefreshWorker — Placeholder for WorkManager-based periodic refresh.
  *
- * Constraints:
- *   - BATTERY_NOT_LOW: Don't refresh when battery is critically low
- *   - Periodic: ~15 min interval (WorkManager minimum)
+ * NOTE: androidx.work (WorkManager) requires an explicit Gradle dependency.
+ * Until that is added, this class provides stub methods that log but don't
+ * schedule any work. The widget still works — it just relies on the OS
+ * updatePeriodMillis (30 min) for refreshes instead of WorkManager (15 min).
  *
- * On each execution:
- *   1. Read latest data from Expo Module bridge (SharedPreferences)
- *   2. Trigger widget update for all instances
+ * To enable WorkManager:
+ * 1. Add to build.gradle: implementation "androidx.work:work-runtime-ktx:2.9.0"
+ * 2. Uncomment the WorkManager code below
  */
-class PeriodicRefreshWorker(
-    context: Context,
-    workerParams: WorkerParameters
-) : Worker(context, workerParams) {
+object PeriodicRefreshWorker {
 
-    override fun doWork(): Result {
-        return try {
-            // Read the latest widget data from SharedPreferences
-            // (written by the Expo Module bridge)
-            val prefs = applicationContext.getSharedPreferences("widget_data", Context.MODE_PRIVATE)
-            val jsonString = prefs.getString("widget_data_json", null)
+    private const val TAG = "WidgetIntelligence"
 
-            if (jsonString != null) {
-                // Trigger update for all widget instances
-                val appWidgetManager = android.appwidget.AppWidgetManager.getInstance(applicationContext)
-                val componentName = android.content.ComponentName(
-                    applicationContext, WidgetReceiver::class.java
-                )
-                val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-
-                for (appWidgetId in appWidgetIds) {
-                    WidgetReceiver.updateWidget(applicationContext, appWidgetManager, appWidgetId)
-                }
-            }
-
-            Result.success()
-        } catch (e: Exception) {
-            Result.retry()
-        }
+    fun schedule(context: Context) {
+        Log.d(TAG, "PeriodicRefreshWorker.schedule() called — WorkManager not configured, using OS updatePeriodMillis instead")
+        // TODO: Enable when androidx.work dependency is added
+        // val constraints = Constraints.Builder()
+        //     .setRequiresBatteryNotLow(true)
+        //     .build()
+        // val request = PeriodicWorkRequestBuilder<RefreshWorker>(15, TimeUnit.MINUTES)
+        //     .setConstraints(constraints)
+        //     .build()
+        // WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+        //     "widget_refresh", ExistingPeriodicWorkPolicy.KEEP, request
+        // )
     }
 
-    companion object {
-        private const val WORK_TAG = "widget_periodic_refresh"
-
-        /**
-         * Schedule periodic widget refresh — runs every ~15 minutes.
-         */
-        fun schedule(context: Context) {
-            val constraints = Constraints.Builder()
-                .setRequiresBatteryNotLow(true)
-                .build()
-
-            val request = PeriodicWorkRequestBuilder<PeriodicRefreshWorker>(
-                15, TimeUnit.MINUTES
-            )
-                .setConstraints(constraints)
-                .addTag(WORK_TAG)
-                .build()
-
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORK_TAG,
-                ExistingPeriodicWorkPolicy.KEEP,
-                request
-            )
-        }
-
-        /**
-         * Cancel periodic refresh — called when last widget is removed.
-         */
-        fun cancel(context: Context) {
-            WorkManager.getInstance(context).cancelAllWorkByTag(WORK_TAG)
-        }
+    fun cancel(context: Context) {
+        Log.d(TAG, "PeriodicRefreshWorker.cancel() called — WorkManager not configured")
+        // TODO: Enable when androidx.work dependency is added
+        // WorkManager.getInstance(context).cancelAllWorkByTag("widget_refresh")
     }
 }

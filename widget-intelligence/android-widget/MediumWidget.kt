@@ -6,75 +6,78 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
 import android.view.View
+import android.util.Log
 
 /**
  * MediumWidget — Two-line message preview + Reply/Open action buttons.
- *
- * Layout:
- *   ┌───────────────────────────────────────┐
- *   │  [7] unread messages          2m ago  │
- *   │                                       │
- *   │  alex                                 │
- *   │  hey, are we still on for the...      │
- *   │                                       │
- *   │  [ reply ]  [ open ]                  │
- *   └───────────────────────────────────────┘
  */
 object MediumWidget {
 
+    private const val TAG = "WidgetIntelligence"
+
     fun buildRemoteViews(context: Context, data: WidgetData): RemoteViews {
-        val views = RemoteViews(context.packageName, getLayoutId(context))
+        val layoutId = getLayoutId(context)
+        Log.d(TAG, "MediumWidget.buildRemoteViews — layoutId=$layoutId")
+
+        if (layoutId == 0) {
+            Log.e(TAG, "MediumWidget layout 'widget_medium' not found! Using fallback.")
+            val fallbackId = context.resources.getIdentifier(
+                "widget_initial", "layout", context.packageName
+            )
+            return RemoteViews(context.packageName, fallbackId)
+        }
+
+        val views = RemoteViews(context.packageName, layoutId)
 
         // Unread count
-        views.setTextViewText(
-            getId(context, "widget_unread_count"),
-            data.unreadCount.toString()
-        )
-        views.setTextViewText(
-            getId(context, "widget_unread_label"),
-            if (data.unreadCount == 1) "unread message" else "unread messages"
-        )
-
-        // Timestamp
-        views.setTextViewText(
-            getId(context, "widget_timestamp"),
-            formatTimeAgo(data.updatedAt)
-        )
+        safeSetText(context, views, "widget_unread_count", data.unreadCount.toString())
+        safeSetText(context, views, "widget_unread_label",
+            if (data.unreadCount == 1) "unread message" else "unread messages")
+        safeSetText(context, views, "widget_timestamp", formatTimeAgo(data.updatedAt))
 
         // Message preview
         if (data.messagePreview != null) {
-            views.setTextViewText(
-                getId(context, "widget_sender"),
-                data.messagePreview.sender
-            )
-            views.setTextViewText(
-                getId(context, "widget_snippet"),
-                data.messagePreview.snippet
-            )
-            views.setViewVisibility(getId(context, "widget_preview_section"), View.VISIBLE)
+            safeSetText(context, views, "widget_sender", data.messagePreview.sender)
+            safeSetText(context, views, "widget_snippet", data.messagePreview.snippet)
+            safeSetVisibility(context, views, "widget_preview_section", View.VISIBLE)
 
-            // Reply action — deep link
-            val replyIntent = Intent(Intent.ACTION_VIEW, Uri.parse(data.messagePreview.deepLink))
-            replyIntent.setPackage(context.packageName)
-            val replyPendingIntent = PendingIntent.getActivity(
-                context, 1, replyIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            views.setOnClickPendingIntent(getId(context, "widget_action_reply"), replyPendingIntent)
+            val replyId = getId(context, "widget_action_reply")
+            if (replyId != 0) {
+                val replyIntent = Intent(Intent.ACTION_VIEW, Uri.parse(data.messagePreview.deepLink))
+                replyIntent.setPackage(context.packageName)
+                val replyPendingIntent = PendingIntent.getActivity(
+                    context, 1, replyIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                views.setOnClickPendingIntent(replyId, replyPendingIntent)
+            }
         } else {
-            views.setViewVisibility(getId(context, "widget_preview_section"), View.GONE)
+            safeSetVisibility(context, views, "widget_preview_section", View.GONE)
         }
 
-        // Open action — deep link to main app
-        val openIntent = Intent(Intent.ACTION_VIEW, Uri.parse("widget://chat"))
-        openIntent.setPackage(context.packageName)
-        val openPendingIntent = PendingIntent.getActivity(
-            context, 2, openIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        views.setOnClickPendingIntent(getId(context, "widget_action_open"), openPendingIntent)
+        // Open action
+        val openId = getId(context, "widget_action_open")
+        if (openId != 0) {
+            val openIntent = Intent(Intent.ACTION_VIEW, Uri.parse("widget://chat"))
+            openIntent.setPackage(context.packageName)
+            val openPendingIntent = PendingIntent.getActivity(
+                context, 2, openIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(openId, openPendingIntent)
+        }
 
         return views
+    }
+
+    private fun safeSetText(context: Context, views: RemoteViews, name: String, text: String) {
+        val id = getId(context, name)
+        if (id != 0) views.setTextViewText(id, text)
+    }
+
+    private fun safeSetVisibility(context: Context, views: RemoteViews, name: String, visibility: Int) {
+        val id = getId(context, name)
+        if (id != 0) views.setViewVisibility(id, visibility)
     }
 
     private fun formatTimeAgo(timestamp: Long): String {
@@ -88,12 +91,12 @@ object MediumWidget {
     }
 
     private fun getLayoutId(context: Context): Int {
-        return context.resources.getIdentifier(
-            "widget_medium", "layout", context.packageName
-        )
+        return context.resources.getIdentifier("widget_medium", "layout", context.packageName)
     }
 
     private fun getId(context: Context, name: String): Int {
-        return context.resources.getIdentifier(name, "id", context.packageName)
+        val id = context.resources.getIdentifier(name, "id", context.packageName)
+        if (id == 0) Log.w(TAG, "MediumWidget — view id '$name' not found")
+        return id
     }
 }

@@ -4,11 +4,8 @@
  * This plugin modifies the Android project during `npx expo prebuild` to:
  * 1. Add <receiver> declaration in AndroidManifest.xml
  * 2. Create res/xml/widget_provider_info.xml
- * 3. Create res/layout/widget_initial.xml
+ * 3. Create ALL widget layout XMLs (initial, small, medium, large)
  * 4. Copy Kotlin widget source files into the Android project
- *
- * Without this plugin, the widget Kotlin code exists but Android
- * has no idea it's there — it never shows in the widget picker.
  */
 
 const {
@@ -107,12 +104,13 @@ function withWidgetResources(config) {
 `;
       fs.writeFileSync(path.join(xmlDir, 'widget_provider_info.xml'), widgetProviderXml);
 
-      // ─── 2. Create res/layout/widget_initial.xml ────────────────────
+      // ─── 2. Create ALL layout XML files ─────────────────────────────
 
       const layoutDir = path.join(androidDir, 'res', 'layout');
       fs.mkdirSync(layoutDir, { recursive: true });
 
-      const widgetInitialXml = `<?xml version="1.0" encoding="utf-8"?>
+      // --- widget_initial.xml (loading / fallback) ---
+      fs.writeFileSync(path.join(layoutDir, 'widget_initial.xml'), `<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -138,8 +136,398 @@ function withWidgetResources(config) {
         android:layout_marginTop="4dp" />
 
 </LinearLayout>
-`;
-      fs.writeFileSync(path.join(layoutDir, 'widget_initial.xml'), widgetInitialXml);
+`);
+
+      // --- widget_small.xml (2×1 or 2×2) ---
+      fs.writeFileSync(path.join(layoutDir, 'widget_small.xml'), `<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#FFF5F0E8"
+    android:gravity="center_vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_unread_count"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:text="0"
+            android:textSize="16sp"
+            android:textColor="#FFF5F0E8"
+            android:background="@android:color/black"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/widget_unread_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="unread messages"
+            android:textSize="14sp"
+            android:textColor="#FF1A1A1A"
+            android:fontFamily="sans-serif" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_action_open"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:text="open chat"
+        android:textSize="13sp"
+        android:textColor="#FFF5F0E8"
+        android:background="@android:color/black"
+        android:fontFamily="sans-serif-medium"
+        android:clickable="true" />
+
+</LinearLayout>
+`);
+
+      // --- widget_medium.xml (4×2) ---
+      fs.writeFileSync(path.join(layoutDir, 'widget_medium.xml'), `<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#FFF5F0E8">
+
+    <!-- Header row: unread count + timestamp -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_unread_count"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:text="0"
+            android:textSize="15sp"
+            android:textColor="#FFF5F0E8"
+            android:background="@android:color/black"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/widget_unread_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:text="unread messages"
+            android:textSize="14sp"
+            android:textColor="#FF1A1A1A" />
+
+        <TextView
+            android:id="@+id/widget_timestamp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="11sp"
+            android:textColor="#FF6B6560" />
+    </LinearLayout>
+
+    <!-- Message preview section -->
+    <LinearLayout
+        android:id="@+id/widget_preview_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="12dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_sender"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textColor="#FF1A1A1A"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/widget_snippet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="13sp"
+            android:textColor="#FF6B6560"
+            android:maxLines="2"
+            android:ellipsize="end" />
+    </LinearLayout>
+
+    <!-- Action buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_action_reply"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:gravity="center"
+            android:text="reply"
+            android:textSize="13sp"
+            android:textColor="#FFF5F0E8"
+            android:background="@android:color/black"
+            android:fontFamily="sans-serif-medium"
+            android:clickable="true" />
+
+        <TextView
+            android:id="@+id/widget_action_open"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:layout_marginStart="8dp"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:gravity="center"
+            android:text="open"
+            android:textSize="13sp"
+            android:textColor="#FF1A1A1A"
+            android:fontFamily="sans-serif-medium"
+            android:clickable="true" />
+    </LinearLayout>
+
+</LinearLayout>
+`);
+
+      // --- widget_large.xml (4×4) ---
+      fs.writeFileSync(path.join(layoutDir, 'widget_large.xml'), `<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#FFF5F0E8">
+
+    <!-- Header: unread + timestamp -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_unread_count"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:text="0"
+            android:textSize="15sp"
+            android:textColor="#FFF5F0E8"
+            android:background="@android:color/black"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/widget_unread_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:text="unread messages"
+            android:textSize="14sp"
+            android:textColor="#FF1A1A1A" />
+
+        <TextView
+            android:id="@+id/widget_timestamp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:textColor="#FF6B6560" />
+    </LinearLayout>
+
+    <!-- Message preview -->
+    <LinearLayout
+        android:id="@+id/widget_preview_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="12dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_sender"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textColor="#FF1A1A1A"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/widget_snippet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="13sp"
+            android:textColor="#FF6B6560"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <!-- Action buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:id="@+id/widget_action_reply"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:gravity="center"
+                android:text="reply"
+                android:textSize="13sp"
+                android:textColor="#FFF5F0E8"
+                android:background="@android:color/black"
+                android:fontFamily="sans-serif-medium"
+                android:clickable="true" />
+
+            <TextView
+                android:id="@+id/widget_action_open"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_marginStart="8dp"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:gravity="center"
+                android:text="open"
+                android:textSize="13sp"
+                android:textColor="#FF1A1A1A"
+                android:fontFamily="sans-serif-medium"
+                android:clickable="true" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="12dp"
+        android:background="#FFE0DAD0" />
+
+    <!-- Event section -->
+    <LinearLayout
+        android:id="@+id/widget_event_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📅"
+            android:textSize="18sp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="10dp">
+
+            <TextView
+                android:id="@+id/widget_event_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#FF1A1A1A"
+                android:fontFamily="sans-serif-medium" />
+
+            <TextView
+                android:id="@+id/widget_event_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="#FF6B6560" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Health section -->
+    <LinearLayout
+        android:id="@+id/widget_health_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="😴"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/widget_health_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:textSize="13sp"
+            android:textColor="#FF6B6560" />
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="12dp"
+        android:background="#FFE0DAD0" />
+
+    <!-- Suggestion section -->
+    <LinearLayout
+        android:id="@+id/widget_suggestion_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:background="#FFFFFFFF"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_suggestion_source"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="10sp"
+            android:textColor="#FF6B6560"
+            android:fontFamily="sans-serif-medium"
+            android:textAllCaps="true"
+            android:letterSpacing="0.08" />
+
+        <TextView
+            android:id="@+id/widget_suggestion_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="13sp"
+            android:textColor="#FF1A1A1A"
+            android:fontFamily="sans-serif"
+            android:textStyle="italic" />
+    </LinearLayout>
+
+</LinearLayout>
+`);
 
       // ─── 3. Add widget_description string ───────────────────────────
 
@@ -147,12 +535,11 @@ function withWidgetResources(config) {
       fs.mkdirSync(valuesDir, { recursive: true });
 
       const widgetStringsPath = path.join(valuesDir, 'widget_strings.xml');
-      const widgetStringsXml = `<?xml version="1.0" encoding="utf-8"?>
+      fs.writeFileSync(widgetStringsPath, `<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_description">quiet, contextual awareness — shows unread messages, upcoming events, and smart suggestions</string>
 </resources>
-`;
-      fs.writeFileSync(widgetStringsPath, widgetStringsXml);
+`);
 
       // ─── 4. Copy Kotlin widget source files ─────────────────────────
 
@@ -174,6 +561,9 @@ function withWidgetResources(config) {
         const targetPath = path.join(targetWidgetDir, file);
         if (fs.existsSync(sourcePath)) {
           fs.copyFileSync(sourcePath, targetPath);
+          console.log(`[withAndroidWidget] Copied ${file}`);
+        } else {
+          console.warn(`[withAndroidWidget] WARNING: ${file} not found at ${sourcePath}`);
         }
       }
 
@@ -188,6 +578,7 @@ function withWidgetResources(config) {
       const bridgeTarget = path.join(targetBridgeDir, bridgeFile);
       if (fs.existsSync(bridgeSource)) {
         fs.copyFileSync(bridgeSource, bridgeTarget);
+        console.log(`[withAndroidWidget] Copied ${bridgeFile}`);
       }
 
       return config;
