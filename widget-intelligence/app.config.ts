@@ -45,6 +45,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-notifications',
     'expo-router',
     'expo-sqlite',
+    'expo-font',
+    './plugins/withAndroidWidget',
   ],
   scheme: 'widget-intelligence',
   extra: {

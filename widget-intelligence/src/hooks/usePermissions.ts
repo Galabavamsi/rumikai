@@ -4,102 +4,152 @@
  * Provides:
  *   - permissions: Record<PermissionKey, PermissionStatus>
  *   - request(key): request a specific permission from the OS
+ *   - checkAll(): re-check all permission statuses from OS
  *   - openSettings(): open the system settings app
  *   - hasMinimumPermissions: true if at least calendar is granted
  *
- * Re-request logic:
- *   - Wait 7 days after denial before re-prompting
- *   - Maximum 2 re-request attempts per permission
- *   - After 2 denials, permanently silent for that permission
+ * Real implementation:
+ *   - Calendar: expo-calendar API
+ *   - Contacts: expo-contacts API
+ *   - Notifications: expo-notifications API
+ *   - Health/AppUsage/Music: require platform-specific native modules (stubbed)
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Linking, Platform } from 'react-native';
+import * as Calendar from 'expo-calendar';
+import * as Contacts from 'expo-contacts';
+import * as Notifications from 'expo-notifications';
 import { useStore, PermissionKey, PermissionStatus } from '../store';
 
-interface PermissionRequestTracker {
-  lastDeniedAt: number | null;
-  denyCount: number;
+/**
+ * Map Expo's permission status string to our PermissionStatus type.
+ */
+function mapExpoStatus(status: string): PermissionStatus {
+  switch (status) {
+    case 'granted':
+      return 'granted';
+    case 'denied':
+      return 'denied';
+    default:
+      return 'undetermined';
+  }
 }
-
-// In-memory tracking — in production, persist to MMKV
-const requestTracking = new Map<PermissionKey, PermissionRequestTracker>();
-
-const MAX_RETRY_COUNT = 2;
-const RETRY_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export function usePermissions() {
   const permissions = useStore((s) => s.permissions);
   const setPermission = useStore((s) => s.setPermission);
 
   /**
+   * Check the current status of a single permission without requesting it.
+   */
+  const check = useCallback(async (key: PermissionKey): Promise<PermissionStatus> => {
+    try {
+      switch (key) {
+        case 'calendar': {
+          const { status } = await Calendar.getCalendarPermissionsAsync();
+          return mapExpoStatus(status);
+        }
+        case 'contacts': {
+          const { status } = await Contacts.getPermissionsAsync();
+          return mapExpoStatus(status);
+        }
+        case 'notifications': {
+          const { status } = await Notifications.getPermissionsAsync();
+          return mapExpoStatus(status);
+        }
+        // These require platform-specific native modules not available via Expo
+        case 'health':
+        case 'appUsage':
+        case 'music':
+          // Return current stored state — no API to check
+          return permissions[key];
+      }
+    } catch {
+      return 'undetermined';
+    }
+  }, [permissions]);
+
+  /**
+   * Check all permissions on mount and sync with OS state.
+   * This ensures our stored state stays in sync if the user
+   * changed permissions in system settings.
+   */
+  const checkAll = useCallback(async () => {
+    const keys: PermissionKey[] = ['calendar', 'contacts', 'notifications'];
+    for (const key of keys) {
+      const status = await check(key);
+      setPermission(key, status);
+    }
+  }, [check, setPermission]);
+
+  // Sync with OS on mount
+  useEffect(() => {
+    checkAll();
+  }, []);
+
+  /**
    * Request a specific permission from the OS.
    * Returns the resulting status.
    */
   const request = useCallback(async (key: PermissionKey): Promise<PermissionStatus> => {
-    // Check re-request eligibility
-    const tracker = requestTracking.get(key) ?? { lastDeniedAt: null, denyCount: 0 };
-
-    if (tracker.denyCount >= MAX_RETRY_COUNT) {
-      // Permanently silent — don't bother the user
-      return permissions[key];
-    }
-
-    if (tracker.lastDeniedAt) {
-      const timeSinceDenial = Date.now() - tracker.lastDeniedAt;
-      if (timeSinceDenial < RETRY_COOLDOWN_MS) {
-        // Too soon to re-request
-        return permissions[key];
-      }
-    }
-
     try {
-      // Platform-specific permission requests
-      // In production, this would use expo-calendar, expo-contacts, etc.
       let result: PermissionStatus = 'undetermined';
 
       switch (key) {
-        case 'calendar':
-          // const { status } = await Calendar.requestCalendarPermissionsAsync();
-          // result = mapExpoStatus(status);
-          result = 'granted'; // Stub for demo
+        case 'calendar': {
+          const { status } = await Calendar.requestCalendarPermissionsAsync();
+          result = mapExpoStatus(status);
           break;
-
-        case 'contacts':
-          // const { status } = await Contacts.requestPermissionsAsync();
-          // result = mapExpoStatus(status);
-          result = 'granted';
+        }
+        case 'contacts': {
+          const { status } = await Contacts.requestPermissionsAsync();
+          result = mapExpoStatus(status);
           break;
-
-        case 'notifications':
-          // const { status } = await Notifications.requestPermissionsAsync();
-          // result = mapExpoStatus(status);
-          result = 'granted';
+        }
+        case 'notifications': {
+          const { status } = await Notifications.requestPermissionsAsync();
+          result = mapExpoStatus(status);
           break;
-
-        case 'health':
-        case 'appUsage':
-        case 'music':
-          // These require platform-specific native modules
-          result = 'granted';
+        }
+        // Platform-specific permissions that need native modules
+        case 'health': {
+          // Android: Requires Google Health Connect SDK
+          // For now, mark as granted in mock mode; in real mode it's unsupported
+          const useMock = useStore.getState().useMockData;
+          result = useMock ? 'granted' : 'undetermined';
           break;
+        }
+        case 'appUsage': {
+          // Android: Requires PACKAGE_USAGE_STATS via Settings intent
+          // Cannot be requested via standard permission dialog
+          if (Platform.OS === 'android') {
+            // Open usage access settings — user must manually toggle
+            try {
+              await Linking.sendIntent('android.settings.USAGE_ACCESS_SETTINGS');
+            } catch {
+              // Fallback: open general settings
+              await Linking.openSettings();
+            }
+          }
+          result = 'undetermined'; // We can't know until they return
+          break;
+        }
+        case 'music': {
+          // No standard permission needed for media session detection
+          const useMock = useStore.getState().useMockData;
+          result = useMock ? 'granted' : 'undetermined';
+          break;
+        }
       }
 
       setPermission(key, result);
-
-      if (result === 'denied') {
-        requestTracking.set(key, {
-          lastDeniedAt: Date.now(),
-          denyCount: tracker.denyCount + 1,
-        });
-      }
-
       return result;
     } catch {
       setPermission(key, 'denied');
       return 'denied';
     }
-  }, [permissions, setPermission]);
+  }, [setPermission]);
 
   /**
    * Open the system settings app so the user can manually toggle permissions.
@@ -121,10 +171,21 @@ export function usePermissions() {
     [permissions.calendar],
   );
 
+  /**
+   * Check if a permission key requires a special settings page
+   * rather than a standard OS permission dialog.
+   */
+  const requiresSetup = useCallback((key: PermissionKey): boolean => {
+    return key === 'health' || key === 'appUsage' || key === 'music';
+  }, []);
+
   return {
     permissions,
     request,
+    check,
+    checkAll,
     openSettings,
     hasMinimumPermissions,
+    requiresSetup,
   };
 }

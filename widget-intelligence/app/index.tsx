@@ -3,14 +3,14 @@
  *
  * Shows:
  *   - Widget data preview (what the native widget displays)
- *   - Contextual suggestions
+ *   - Contextual suggestions with relevance scores
  *   - Developer mode toggle (mock data)
- *   - Quick actions
+ *   - Quick navigation to settings and onboarding
  *
- * Design: Warm minimalist — cream surfaces, organic typography, quiet intelligence
+ * Design: Warm minimalist — cream surfaces, Inter font, SVG icons
  */
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,14 +19,21 @@ import {
   StyleSheet,
   Switch,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useWidget } from '../src/hooks/useWidget';
 import { useContextualSuggestions } from '../src/hooks/useContextualSuggestions';
 import { useStore } from '../src/store';
-
-const { width } = Dimensions.get('window');
+import { colors, typography, spacing, radii, commonStyles, fonts } from '../src/theme';
+import {
+  CalendarIcon,
+  SleepIcon,
+  StepsIcon,
+  MessageIcon,
+  CloseIcon,
+  SettingsIcon,
+} from '../src/components/Icons';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -58,321 +65,305 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={isLoading}
-          onRefresh={refresh}
-          tintColor="#6B6560"
-          colors={['#6B6560']}
-        />
-      }
-    >
-      {/* ─── Header ──────────────────────────────────────────────── */}
-      <View style={styles.header}>
-        <Text style={styles.appName}>widget intelligence</Text>
-        <Text style={styles.subtitle}>quiet, contextual awareness</Text>
-      </View>
-
-      {/* ─── Developer Mode Toggle ────────────────────────────────── */}
-      <View style={styles.devToggle}>
-        <View style={styles.devToggleText}>
-          <Text style={styles.devToggleLabel}>developer mode</Text>
-          <Text style={styles.devToggleHint}>
-            {useMockData ? 'using mock signals' : 'using real device data'}
-          </Text>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={refresh}
+            tintColor={colors.textSecondary}
+            colors={[colors.textSecondary]}
+          />
+        }
+      >
+        {/* ─── Header ──────────────────────────────────────────────── */}
+        <View style={styles.header}>
+          <Text style={styles.appName}>widget intelligence</Text>
+          <Text style={styles.subtitle}>quiet, contextual awareness</Text>
         </View>
-        <Switch
-          value={useMockData}
-          onValueChange={() => {
-            toggleMockMode();
-            setTimeout(refresh, 100);
-          }}
-          trackColor={{ false: '#E0DAD0', true: '#4A7C59' }}
-          thumbColor="#F5F0E8"
-          ios_backgroundColor="#E0DAD0"
-        />
-      </View>
 
-      {/* ─── Widget Preview Card ──────────────────────────────────── */}
-      {widgetData && (
-        <View style={styles.widgetCard}>
-          <View style={styles.widgetHeader}>
-            <Text style={styles.widgetTitle}>widget preview</Text>
-            <Text style={styles.timestamp}>
-              {formatTimeAgo(widgetData.updatedAt)}
+        {/* ─── Developer Mode Toggle ────────────────────────────────── */}
+        <View style={styles.devToggle}>
+          <View style={styles.devToggleText}>
+            <Text style={styles.devToggleLabel}>developer mode</Text>
+            <Text style={styles.devToggleHint}>
+              {useMockData ? 'using mock signals' : 'using real device data'}
             </Text>
           </View>
+          <Switch
+            value={useMockData}
+            onValueChange={() => {
+              toggleMockMode();
+              setTimeout(refresh, 100);
+            }}
+            trackColor={{ false: colors.border, true: colors.granted }}
+            thumbColor={colors.surfaceElevated}
+            ios_backgroundColor={colors.border}
+          />
+        </View>
 
-          {/* Unread Count */}
-          <View style={styles.unreadRow}>
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadCount}>{widgetData.unreadCount}</Text>
+        {/* ─── Widget Preview Card ──────────────────────────────────── */}
+        {widgetData && (
+          <View style={styles.widgetCard}>
+            <View style={styles.widgetHeader}>
+              <Text style={styles.widgetTitle}>widget preview</Text>
+              <Text style={styles.timestamp}>
+                {formatTimeAgo(widgetData.updatedAt)}
+              </Text>
             </View>
-            <Text style={styles.unreadLabel}>unread messages</Text>
+
+            {/* Unread Count */}
+            <View style={styles.unreadRow}>
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadCount}>{widgetData.unreadCount}</Text>
+              </View>
+              <Text style={styles.unreadLabel}>unread messages</Text>
+            </View>
+
+            {/* Message Preview */}
+            {widgetData.messagePreview && (
+              <View style={styles.previewSection}>
+                <Text style={styles.previewSender}>
+                  {widgetData.messagePreview.sender}
+                </Text>
+                <Text style={styles.previewSnippet} numberOfLines={2}>
+                  {widgetData.messagePreview.snippet}
+                </Text>
+                <View style={styles.actionRow}>
+                  <TouchableOpacity style={styles.actionPill}>
+                    <Text style={styles.actionPillText}>reply</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionPillOutline}>
+                    <Text style={styles.actionPillOutlineText}>open</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Divider */}
+            <View style={styles.divider} />
+
+            {/* Next Event */}
+            {widgetData.nextEvent && (
+              <View style={styles.eventSection}>
+                <View style={styles.iconWrapper}>
+                  <CalendarIcon size={20} color={colors.textPrimary} />
+                </View>
+                <View style={styles.eventTextBlock}>
+                  <Text style={styles.eventTitle}>
+                    {widgetData.nextEvent.title}
+                  </Text>
+                  <Text style={styles.eventTime}>
+                    in {widgetData.nextEvent.startsInMinutes} min
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Health Insight */}
+            {widgetData.healthInsight && (
+              <View style={styles.healthSection}>
+                <View style={styles.iconWrapper}>
+                  {widgetData.healthInsight.type === 'sleep' ? (
+                    <SleepIcon size={20} color={colors.textSecondary} />
+                  ) : (
+                    <StepsIcon size={20} color={colors.textSecondary} />
+                  )}
+                </View>
+                <Text style={styles.healthMessage}>
+                  {widgetData.healthInsight.message}
+                </Text>
+              </View>
+            )}
           </View>
+        )}
 
-          {/* Message Preview */}
-          {widgetData.messagePreview && (
-            <View style={styles.previewSection}>
-              <Text style={styles.previewSender}>
-                {widgetData.messagePreview.sender}
-              </Text>
-              <Text style={styles.previewSnippet} numberOfLines={2}>
-                {widgetData.messagePreview.snippet}
-              </Text>
-              <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.actionPill}>
-                  <Text style={styles.actionPillText}>reply</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionPillOutline}>
-                  <Text style={styles.actionPillOutlineText}>open</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          {/* Divider */}
-          <View style={styles.divider} />
-
-          {/* Next Event */}
-          {widgetData.nextEvent && (
-            <View style={styles.eventSection}>
-              <Text style={styles.eventIcon}>📅</Text>
-              <View style={styles.eventTextBlock}>
-                <Text style={styles.eventTitle}>
-                  {widgetData.nextEvent.title}
-                </Text>
-                <Text style={styles.eventTime}>
-                  in {widgetData.nextEvent.startsInMinutes} min
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {/* Health Insight */}
-          {widgetData.healthInsight && (
-            <View style={styles.healthSection}>
-              <Text style={styles.healthIcon}>
-                {widgetData.healthInsight.type === 'sleep' ? '😴' : '🚶'}
-              </Text>
-              <Text style={styles.healthMessage}>
-                {widgetData.healthInsight.message}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* ─── Suggestion Cards ─────────────────────────────────────── */}
-      {suggestions.length > 0 && (
-        <View style={styles.suggestionsSection}>
-          <Text style={styles.sectionTitle}>suggestions</Text>
-          {suggestions.map((suggestion) => (
-            <View key={suggestion.id} style={styles.suggestionCard}>
-              <View style={styles.suggestionContent}>
-                <View style={styles.sourceTag}>
-                  <Text style={styles.sourceText}>{suggestion.source}</Text>
+        {/* ─── Suggestion Cards ─────────────────────────────────────── */}
+        {suggestions.length > 0 && (
+          <View style={styles.suggestionsSection}>
+            <Text style={styles.sectionTitle}>suggestions</Text>
+            {suggestions.map((suggestion) => (
+              <View key={suggestion.id} style={styles.suggestionCard}>
+                <View style={styles.suggestionContent}>
+                  <View style={styles.sourceTag}>
+                    <Text style={styles.sourceText}>{suggestion.source}</Text>
+                  </View>
+                  <Text style={styles.suggestionMessage}>
+                    {suggestion.message}
+                  </Text>
+                  <View style={styles.scoreBar}>
+                    <View
+                      style={[
+                        styles.scoreBarFill,
+                        { width: `${suggestion.relevanceScore * 100}%` },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.scoreLabel}>
+                    relevance {(suggestion.relevanceScore * 100).toFixed(0)}%
+                  </Text>
                 </View>
-                <Text style={styles.suggestionMessage}>
-                  {suggestion.message}
-                </Text>
-                <View style={styles.scoreBar}>
-                  <View
-                    style={[
-                      styles.scoreBarFill,
-                      { width: `${suggestion.relevanceScore * 100}%` },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.scoreLabel}>
-                  relevance {(suggestion.relevanceScore * 100).toFixed(0)}%
-                </Text>
+                <TouchableOpacity
+                  style={styles.dismissButton}
+                  onPress={() => dismiss(suggestion.id)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <CloseIcon size={14} color={colors.textTertiary} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={styles.dismissButton}
-                onPress={() => dismiss(suggestion.id)}
-              >
-                <Text style={styles.dismissText}>×</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+            ))}
+          </View>
+        )}
+
+        {/* ─── Navigation ───────────────────────────────────────────── */}
+        <View style={styles.navSection}>
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => router.push('/onboarding/permissions')}
+            activeOpacity={0.7}
+          >
+            <MessageIcon size={20} color={colors.textPrimary} />
+            <Text style={styles.navButtonText}>permission{'\n'}onboarding</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => router.push('/settings')}
+            activeOpacity={0.7}
+          >
+            <SettingsIcon size={20} color={colors.textPrimary} />
+            <Text style={styles.navButtonText}>settings</Text>
+          </TouchableOpacity>
         </View>
-      )}
 
-      {/* ─── Navigation ───────────────────────────────────────────── */}
-      <View style={styles.navSection}>
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => router.push('/onboarding/permissions')}
-        >
-          <Text style={styles.navButtonText}>permission onboarding</Text>
-        </TouchableOpacity>
+        {/* ─── Architecture Info ────────────────────────────────────── */}
+        <View style={styles.infoCard}>
+          <Text style={styles.infoTitle}>architecture</Text>
+          <Text style={styles.infoText}>
+            signal collector → rule engine → suggestion queue → widget data
+          </Text>
+          <Text style={styles.infoText}>
+            {widgetData?.suggestions.length ?? 0} active suggestions
+            {' · '}
+            {useMockData ? 'mock signals' : 'real signals'}
+          </Text>
+        </View>
 
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => router.push('/settings')}
-        >
-          <Text style={styles.navButtonText}>settings</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ─── Architecture Info ────────────────────────────────────── */}
-      <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>architecture</Text>
-        <Text style={styles.infoText}>
-          signal collector → rule engine → suggestion queue → widget data
-        </Text>
-        <Text style={styles.infoText}>
-          {widgetData?.suggestions.length ?? 0} active suggestions
-          {' · '}
-          {useMockData ? 'mock signals' : 'real signals'}
-        </Text>
-      </View>
-
-      <View style={{ height: 60 }} />
-    </ScrollView>
+        <View style={{ height: 60 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
-const colors = {
-  surface: '#F5F0E8',
-  card: '#FFFFFF',
-  textPrimary: '#1A1A1A',
-  textSecondary: '#6B6560',
-  accentPillBg: '#1A1A1A',
-  accentPillText: '#F5F0E8',
-  border: '#E0DAD0',
-  granted: '#4A7C59',
-  denied: '#C17A3A',
-};
-
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.surface,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.surface,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
   },
 
   // Header
   header: {
-    marginBottom: 28,
+    marginBottom: spacing['3xl'],
   },
   appName: {
-    fontSize: 28,
-    fontWeight: '300',
-    color: colors.textPrimary,
-    letterSpacing: -0.5,
+    ...typography.h2,
   },
   subtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 4,
+    ...typography.bodySmall,
+    fontFamily: fonts.light,
     fontStyle: 'italic',
+    marginTop: spacing.xs,
   },
 
   // Dev Toggle
   devToggle: {
+    ...commonStyles.card,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
   },
   devToggleText: {
     flex: 1,
   },
   devToggleLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: colors.textPrimary,
+    ...typography.label,
   },
   devToggleHint: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    ...typography.caption,
     marginTop: 2,
   },
 
   // Widget Card
   widgetCard: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...commonStyles.cardElevated,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
   },
   widgetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   widgetTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    ...typography.sectionHeader,
   },
   timestamp: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '300',
+    ...typography.caption,
+    fontFamily: fonts.light,
   },
 
   // Unread
   unreadRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   unreadBadge: {
     backgroundColor: colors.accentPillBg,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   unreadCount: {
     color: colors.accentPillText,
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    fontSize: 17,
   },
   unreadLabel: {
-    fontSize: 15,
-    color: colors.textPrimary,
-    fontWeight: '400',
+    ...typography.body,
   },
 
   // Message Preview
   previewSection: {
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   previewSender: {
+    ...typography.label,
     fontSize: 14,
-    fontWeight: '500',
-    color: colors.textPrimary,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   previewSnippet: {
-    fontSize: 14,
-    color: colors.textSecondary,
+    ...typography.bodySmall,
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   actionRow: {
     flexDirection: 'row',
@@ -380,60 +371,63 @@ const styles = StyleSheet.create({
   },
   actionPill: {
     backgroundColor: colors.accentPillBg,
-    borderRadius: 24,
-    paddingHorizontal: 20,
+    borderRadius: radii.xl,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 10,
-    height: 36,
+    height: 38,
     justifyContent: 'center',
   },
   actionPillText: {
     color: colors.accentPillText,
+    fontFamily: fonts.medium,
     fontSize: 14,
-    fontWeight: '500',
   },
   actionPillOutline: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 24,
-    paddingHorizontal: 20,
+    borderRadius: radii.xl,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 10,
-    height: 36,
+    height: 38,
     justifyContent: 'center',
   },
   actionPillOutlineText: {
     color: colors.textPrimary,
+    fontFamily: fonts.medium,
     fontSize: 14,
-    fontWeight: '500',
   },
 
   // Divider
   divider: {
     height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 12,
+    backgroundColor: colors.borderLight,
+    marginVertical: spacing.md,
   },
 
   // Event
   eventSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
-  eventIcon: {
-    fontSize: 20,
-    marginRight: 12,
+  iconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surfaceElevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
   },
   eventTextBlock: {
     flex: 1,
   },
   eventTitle: {
+    ...typography.label,
     fontSize: 14,
-    fontWeight: '500',
-    color: colors.textPrimary,
   },
   eventTime: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    ...typography.caption,
     marginTop: 2,
   },
 
@@ -442,34 +436,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  healthIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
   healthMessage: {
-    fontSize: 14,
-    color: colors.textSecondary,
+    ...typography.bodySmall,
   },
 
   // Suggestions Section
   suggestionsSection: {
-    marginBottom: 20,
+    marginBottom: spacing.xl,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 12,
+    ...typography.sectionHeader,
+    marginBottom: spacing.md,
   },
   suggestionCard: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...commonStyles.card,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
@@ -477,97 +459,82 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sourceTag: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    paddingHorizontal: 8,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     alignSelf: 'flex-start',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   sourceText: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontWeight: '500',
+    ...typography.micro,
   },
   suggestionMessage: {
-    fontSize: 15,
-    color: colors.textPrimary,
+    ...typography.body,
     fontStyle: 'italic',
-    lineHeight: 22,
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   scoreBar: {
     height: 3,
-    backgroundColor: colors.border,
+    backgroundColor: colors.scoreBarBg,
     borderRadius: 2,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
     overflow: 'hidden',
   },
   scoreBarFill: {
     height: '100%',
-    backgroundColor: colors.granted,
+    backgroundColor: colors.scoreBar,
     borderRadius: 2,
   },
   scoreLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
+    ...typography.micro,
+    fontFamily: fonts.light,
     fontWeight: '300',
   },
   dismissButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.surface,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
-  },
-  dismissText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    fontWeight: '300',
+    marginLeft: spacing.sm,
   },
 
   // Navigation
   navSection: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 20,
+    marginBottom: spacing.xl,
   },
   navButton: {
     flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...commonStyles.card,
+    padding: spacing.lg,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    minHeight: 80,
   },
   navButtonText: {
+    fontFamily: fonts.medium,
     fontSize: 13,
-    fontWeight: '500',
     color: colors.textPrimary,
+    textAlign: 'center',
   },
 
   // Info Card
   infoCard: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...commonStyles.card,
+    padding: spacing.lg,
   },
   infoTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
+    ...typography.sectionHeader,
+    marginBottom: spacing.sm,
   },
   infoText: {
+    ...typography.bodySmall,
     fontSize: 13,
-    color: colors.textSecondary,
     lineHeight: 20,
   },
 });

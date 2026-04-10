@@ -4,9 +4,10 @@
  * Features:
  *   - Toggle per data source with status badges (granted / denied / not set)
  *   - Expandable "why we need this" sections
+ *   - "Requires setup" badge for platform-specific permissions
  *   - Direct link to system settings
  *   - Mock data toggle
- *   - Architecture info
+ *   - Privacy section
  */
 
 import React, { useState } from 'react';
@@ -18,13 +19,28 @@ import {
   StyleSheet,
   Switch,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { usePermissions } from '../src/hooks/usePermissions';
 import { useStore, PermissionKey } from '../src/store';
+import { colors, typography, spacing, radii, commonStyles, fonts, shadows } from '../src/theme';
+import {
+  CalendarIcon,
+  HeartIcon,
+  ContactsIcon,
+  BellIcon,
+  PhoneIcon,
+  MusicIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ArrowLeftIcon,
+  ExternalLinkIcon,
+} from '../src/components/Icons';
 
 interface PermissionInfo {
   key: PermissionKey;
-  icon: string;
+  icon: React.ComponentType<{ size?: number; color?: string }>;
+  iconColor?: string;
   label: string;
   description: string;
 }
@@ -32,37 +48,38 @@ interface PermissionInfo {
 const PERMISSION_INFO: PermissionInfo[] = [
   {
     key: 'calendar',
-    icon: '📅',
+    icon: CalendarIcon,
     label: 'calendar',
     description: 'reads your next 5 events in a 24-hour window to surface meeting reminders and schedule-aware suggestions',
   },
   {
     key: 'health',
-    icon: '❤️',
+    icon: HeartIcon,
+    iconColor: '#E57373',
     label: 'health data',
     description: 'reads today\'s step count and last night\'s sleep duration to provide wellness nudges when you need rest',
   },
   {
     key: 'contacts',
-    icon: '👥',
+    icon: ContactsIcon,
     label: 'contacts',
     description: 'identifies your top 5 contacts by interaction frequency to suggest people you might want to check in with',
   },
   {
     key: 'notifications',
-    icon: '🔔',
+    icon: BellIcon,
     label: 'notifications',
     description: 'enables push-triggered widget refreshes so your widget data stays current',
   },
   {
     key: 'appUsage',
-    icon: '📱',
+    icon: PhoneIcon,
     label: 'app usage',
     description: 'reads your top 3 app categories by screen time (android only) for contextual suggestions',
   },
   {
     key: 'music',
-    icon: '🎵',
+    icon: MusicIcon,
     label: 'music history',
     description: 'reads currently playing or last played track and genre for ambient presence moments',
   },
@@ -70,12 +87,14 @@ const PERMISSION_INFO: PermissionInfo[] = [
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { permissions, request, openSettings } = usePermissions();
+  const { permissions, request, openSettings, requiresSetup } = usePermissions();
   const useMockData = useStore((s) => s.useMockData);
   const toggleMockMode = useStore((s) => s.toggleMockMode);
   const [expandedKey, setExpandedKey] = useState<PermissionKey | null>(null);
 
-  const getStatusStyle = (status: string) => {
+  const getStatusStyle = (key: PermissionKey) => {
+    const status = permissions[key];
+    if (requiresSetup(key) && status !== 'granted') return styles.statusInfo;
     switch (status) {
       case 'granted': return styles.statusGranted;
       case 'denied': return styles.statusDenied;
@@ -83,7 +102,9 @@ export default function SettingsScreen() {
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (key: PermissionKey) => {
+    const status = permissions[key];
+    if (requiresSetup(key) && status !== 'granted') return 'requires setup';
     switch (status) {
       case 'granted': return 'granted';
       case 'denied': return 'denied';
@@ -91,166 +112,188 @@ export default function SettingsScreen() {
     }
   };
 
+  const getStatusTextStyle = (key: PermissionKey) => {
+    const status = permissions[key];
+    if (requiresSetup(key) && status !== 'granted') return styles.statusTextInfo;
+    if (status === 'granted') return styles.statusTextGranted;
+    if (status === 'denied') return styles.statusTextDenied;
+    return {};
+  };
+
+  const getActionLabel = (key: PermissionKey) => {
+    if (requiresSetup(key)) return 'open settings';
+    return 'grant access';
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backButton}>← back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>settings</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButtonRow}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <ArrowLeftIcon size={18} color={colors.textSecondary} />
+            <Text style={styles.backButtonText}>back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>settings</Text>
+        </View>
 
-      {/* Data Sources Section */}
-      <Text style={styles.sectionTitle}>data sources</Text>
-      <View style={styles.card}>
-        {PERMISSION_INFO.map((info, index) => (
-          <View key={info.key}>
-            {index > 0 && <View style={styles.divider} />}
-            <TouchableOpacity
-              style={styles.permissionRow}
-              onPress={() =>
-                setExpandedKey(expandedKey === info.key ? null : info.key)
-              }
-            >
-              <Text style={styles.permissionIcon}>{info.icon}</Text>
-              <View style={styles.permissionTextBlock}>
-                <Text style={styles.permissionLabel}>{info.label}</Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    getStatusStyle(permissions[info.key]),
-                  ]}
+        {/* Data Sources Section */}
+        <Text style={styles.sectionTitle}>data sources</Text>
+        <View style={styles.card}>
+          {PERMISSION_INFO.map((info, index) => {
+            const IconComponent = info.icon;
+            return (
+              <View key={info.key}>
+                {index > 0 && <View style={styles.divider} />}
+                <TouchableOpacity
+                  style={styles.permissionRow}
+                  onPress={() =>
+                    setExpandedKey(expandedKey === info.key ? null : info.key)
+                  }
+                  activeOpacity={0.7}
                 >
-                  <Text
-                    style={[
-                      styles.statusText,
-                      permissions[info.key] === 'granted' && styles.statusTextGranted,
-                      permissions[info.key] === 'denied' && styles.statusTextDenied,
-                    ]}
-                  >
-                    {getStatusText(permissions[info.key])}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.expandArrow}>
-                {expandedKey === info.key ? '▲' : '▼'}
-              </Text>
-            </TouchableOpacity>
+                  <View style={styles.iconBg}>
+                    <IconComponent size={20} color={info.iconColor || colors.textSecondary} />
+                  </View>
+                  <View style={styles.permissionTextBlock}>
+                    <Text style={styles.permissionLabel}>{info.label}</Text>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        getStatusStyle(info.key),
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusText,
+                          getStatusTextStyle(info.key),
+                        ]}
+                      >
+                        {getStatusText(info.key)}
+                      </Text>
+                    </View>
+                  </View>
+                  {expandedKey === info.key ? (
+                    <ChevronUpIcon size={16} color={colors.textTertiary} />
+                  ) : (
+                    <ChevronDownIcon size={16} color={colors.textTertiary} />
+                  )}
+                </TouchableOpacity>
 
-            {expandedKey === info.key && (
-              <View style={styles.expandedSection}>
-                <Text style={styles.expandedLabel}>why we need this</Text>
-                <Text style={styles.expandedText}>{info.description}</Text>
-                {permissions[info.key] !== 'granted' && (
-                  <TouchableOpacity
-                    style={styles.grantButton}
-                    onPress={() => request(info.key)}
-                  >
-                    <Text style={styles.grantButtonText}>grant access</Text>
-                  </TouchableOpacity>
+                {expandedKey === info.key && (
+                  <View style={styles.expandedSection}>
+                    <Text style={styles.expandedLabel}>why we need this</Text>
+                    <Text style={styles.expandedText}>{info.description}</Text>
+                    {permissions[info.key] !== 'granted' && (
+                      <TouchableOpacity
+                        style={styles.grantButton}
+                        onPress={() => request(info.key)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.grantButtonText}>
+                          {getActionLabel(info.key)}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
               </View>
-            )}
-          </View>
-        ))}
-      </View>
-
-      {/* System Settings Link */}
-      <TouchableOpacity style={styles.systemSettingsButton} onPress={openSettings}>
-        <Text style={styles.systemSettingsText}>open system settings</Text>
-      </TouchableOpacity>
-
-      {/* Developer Section */}
-      <Text style={styles.sectionTitle}>developer</Text>
-      <View style={styles.card}>
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleTextBlock}>
-            <Text style={styles.toggleLabel}>mock data mode</Text>
-            <Text style={styles.toggleHint}>
-              inject synthetic signals for testing without real device data
-            </Text>
-          </View>
-          <Switch
-            value={useMockData}
-            onValueChange={toggleMockMode}
-            trackColor={{ false: '#E0DAD0', true: '#4A7C59' }}
-            thumbColor="#F5F0E8"
-            ios_backgroundColor="#E0DAD0"
-          />
+            );
+          })}
         </View>
-      </View>
 
-      {/* Privacy Section */}
-      <Text style={styles.sectionTitle}>privacy</Text>
-      <View style={styles.card}>
-        <Text style={styles.privacyText}>
-          all data is processed and stored locally on your device.
-          no personal information is sent to any server.
-          you can revoke any permission at any time through system settings.
-        </Text>
-      </View>
+        {/* System Settings Link */}
+        <TouchableOpacity
+          style={styles.systemSettingsButton}
+          onPress={openSettings}
+          activeOpacity={0.7}
+        >
+          <ExternalLinkIcon size={16} color={colors.textSecondary} />
+          <Text style={styles.systemSettingsText}>open system settings</Text>
+        </TouchableOpacity>
 
-      <View style={{ height: 60 }} />
-    </ScrollView>
+        {/* Developer Section */}
+        <Text style={styles.sectionTitle}>developer</Text>
+        <View style={styles.card}>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleTextBlock}>
+              <Text style={styles.toggleLabel}>mock data mode</Text>
+              <Text style={styles.toggleHint}>
+                inject synthetic signals for testing without real device data
+              </Text>
+            </View>
+            <Switch
+              value={useMockData}
+              onValueChange={toggleMockMode}
+              trackColor={{ false: colors.border, true: colors.granted }}
+              thumbColor={colors.surfaceElevated}
+              ios_backgroundColor={colors.border}
+            />
+          </View>
+        </View>
+
+        {/* Privacy Section */}
+        <Text style={styles.sectionTitle}>privacy</Text>
+        <View style={styles.card}>
+          <Text style={styles.privacyText}>
+            all data is processed and stored locally on your device.
+            no personal information is sent to any server.
+            you can revoke any permission at any time through system settings.
+          </Text>
+        </View>
+
+        <View style={{ height: 60 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
-const colors = {
-  surface: '#F5F0E8',
-  card: '#FFFFFF',
-  textPrimary: '#1A1A1A',
-  textSecondary: '#6B6560',
-  accentPillBg: '#1A1A1A',
-  accentPillText: '#F5F0E8',
-  border: '#E0DAD0',
-  granted: '#4A7C59',
-  denied: '#C17A3A',
-};
-
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.surface,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.surface,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
   },
 
   // Header
   header: {
-    marginBottom: 28,
+    marginBottom: spacing['2xl'],
   },
-  backButton: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 12,
+  backButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  backButtonText: {
+    ...typography.bodySmall,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '300',
-    color: colors.textPrimary,
-    letterSpacing: -0.5,
+    ...typography.h2,
   },
 
   // Sections
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    ...typography.sectionHeader,
     marginBottom: 10,
-    marginTop: 20,
+    marginTop: spacing.xl,
   },
   card: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...commonStyles.card,
     overflow: 'hidden',
   },
 
@@ -258,43 +301,47 @@ const styles = StyleSheet.create({
   permissionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: spacing.lg,
   },
-  permissionIcon: {
-    fontSize: 20,
-    marginRight: 12,
+  iconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surfaceElevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
   },
   permissionTextBlock: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   permissionLabel: {
-    fontSize: 15,
-    fontWeight: '400',
-    color: colors.textPrimary,
+    ...typography.body,
   },
 
   // Status Badge
   statusBadge: {
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
   },
   statusGranted: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: colors.grantedBg,
   },
   statusDenied: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: colors.deniedBg,
   },
   statusUndetermined: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceElevated,
+  },
+  statusInfo: {
+    backgroundColor: colors.infoBg,
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.textSecondary,
+    ...typography.micro,
   },
   statusTextGranted: {
     color: colors.granted,
@@ -302,63 +349,53 @@ const styles = StyleSheet.create({
   statusTextDenied: {
     color: colors.denied,
   },
-  expandArrow: {
-    fontSize: 10,
-    color: colors.textSecondary,
+  statusTextInfo: {
+    color: colors.info,
   },
 
   // Expanded Section
   expandedSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    paddingTop: 4,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    paddingTop: spacing.xs,
   },
   expandedLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.textSecondary,
+    ...typography.micro,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 6,
+    marginBottom: spacing.sm,
   },
   expandedText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 12,
+    ...typography.bodySmall,
+    marginBottom: spacing.md,
   },
   grantButton: {
-    backgroundColor: colors.accentPillBg,
-    borderRadius: 24,
-    paddingVertical: 10,
-    alignItems: 'center',
+    ...commonStyles.pillButton,
+    paddingVertical: 12,
   },
   grantButtonText: {
     color: colors.accentPillText,
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.buttonSmall,
   },
 
   // Divider
   divider: {
     height: 1,
-    backgroundColor: colors.border,
-    marginHorizontal: 16,
+    backgroundColor: colors.borderLight,
+    marginHorizontal: spacing.lg,
   },
 
   // System Settings
   systemSettingsButton: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    paddingVertical: 14,
+    ...commonStyles.outlineButton,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
   systemSettingsText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '400',
+    ...typography.bodySmall,
   },
 
   // Toggle Row
@@ -366,28 +403,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: spacing.lg,
   },
   toggleTextBlock: {
     flex: 1,
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   toggleLabel: {
-    fontSize: 15,
-    fontWeight: '400',
-    color: colors.textPrimary,
+    ...typography.label,
   },
   toggleHint: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    ...typography.caption,
     marginTop: 2,
   },
 
   // Privacy
   privacyText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    padding: 16,
+    ...typography.bodySmall,
+    lineHeight: 22,
+    padding: spacing.lg,
   },
 });
